@@ -1,38 +1,64 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "config.h"
 
-int main(){
-	FILE *f = fopen("config.txt","r");
-	if (!f){
-		perror("Erreur");
-		return 1;
-	}
+int load_config(const char *filename, PROCESS p[], int *count) {
+    FILE *f = fopen("config.txt", "r");
+    if (!f) {
+        printf("Error: Cannot open config file: %s\n", filename);
+        return -1;
+    }
 
-	PROCESS processes[50];
-	int count = 0;
-	while(!feof(f)){
-	PROCESS p;
-	fscanf(f,"%d %d %d %d %d", &p.id, &p.arrival_time, &p.execution_time, &p.priority, &p.io_count);
-	
-	for(int i=0;i<p.io_count;i++){
-		fscanf(f,"%d %d", &p.io_operations[i].start_time, &p.io_operations[i].duration);
-	}
-	processes[count++] = p;
-	}
+    int i = 0;
+    while (i < MAX_PROCESSES) {
+        PROCESS proc;
 
-	fclose(f);
+        // Try to read basic process info
+        int base = fscanf(
+            f, "%d %d %d %d %d",
+            &proc.id,
+            &proc.arrival_time,
+            &proc.execution_time,
+            &proc.priority,
+            &proc.io_count
+        );
 
-	for(int i=0;i <count - 1; i++){
-	printf("PROCESS %d: \n", processes[i].id);
-	printf("Arrival time: %d \n", processes[i].arrival_time);
-	printf("Execution time: %d \n", processes[i].execution_time);
-	printf("Priority: %d \n", processes[i].priority);
-	printf("IO count: %d \n", processes[i].io_count);
-		for(int j=0;j<processes[i].io_count; j++){
-			IO_OPERATION io = processes[i].io_operations[j];
-			printf(" IO start at t = %d for %d units \n", io.start_time, io.duration);
-}
-}
-return 0;
+        if (base == EOF)
+            break;
+
+        if (base < 5) {
+            printf("Error: Invalid format in config file (process header).\n");
+            fclose(f);
+            return -1;
+        }
+
+        if (proc.io_count > MAX_IO_PER_PROCESS) {
+            printf("Error: Process %d has too many I/O operations (%d).\n",
+                   proc.id, proc.io_count);
+            fclose(f);
+            return -1;
+        }
+
+        // Read all IO operations for this process
+        for (int j = 0; j < proc.io_count; j++) {
+            int ret = fscanf(
+                f, "%d %d",
+                &proc.io_operations[j].start_time,
+                &proc.io_operations[j].duration
+            );
+
+            if (ret < 2) {
+                printf("Error: Invalid IO entry for process %d\n", proc.id);
+                fclose(f);
+                return -1;
+            }
+        }
+
+        p[i++] = proc;
+    }
+
+    *count = i;
+    fclose(f);
+    return 0;
 }
 
