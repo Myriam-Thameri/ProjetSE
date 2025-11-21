@@ -19,10 +19,4 @@ typedef struct
     int io_count;
 } PROCESS;
 
-typedef struct 
-{
-    PROCESS processes[20];
-    int process_count;
-} CONFIG;
-
 #endif // TYPES_H
