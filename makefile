@@ -1,24 +1,27 @@
+# Nom de l'exécutable
+TARGET = simulateur
+
+# Compilateur
 CC = gcc
-# Generate dependency files (.d) for header tracking: -MMD -MP
-CFLAGS = -Wall -Wextra -g -MMD -MP
 
-SRC = main.c Config/config.c Algorithms/RoundRobin.c
+# Options de compilation
+CFLAGS = -Wall -I. -IConfig -IAlgorithms
+
+# Fichiers sources
+SRC = main.c Config/config.c Algorithms/fcfs.c
+
+# Fichiers objets
 OBJ = $(SRC:.c=.o)
-DEPS = $(SRC:.c=.d)
 
-program: $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ) -o program
+# Règle principale
+$(TARGET): $(OBJ)
+	$(CC) $(OBJ) -o $(TARGET)
 
-# Include generated dependency files (ignore missing ones on first run)
--include $(DEPS)
-
+# Compilation des .c en .o
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-.PHONY: clean run
-
+# Nettoyage
 clean:
-	rm -f $(OBJ) $(DEPS) program
+	rm -f $(OBJ) $(TARGET)
 
-run: program
-	./program
