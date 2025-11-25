@@ -30,7 +30,7 @@ int main(void){
         }
         printf("Configuration loaded successfully.\n");
         printf("Let s test Round Robin Scheduling Algorithm...\n");
-        //RoundRobin_Algo(CFG);
+        RoundRobin_Algo(CFG);
         
     }
     

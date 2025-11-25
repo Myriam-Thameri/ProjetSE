@@ -20,25 +20,25 @@ PCB* initialize_PCB(Config* config) {
     return pcb;
 }
 
-void add_process_to_queue(QUEUE* ready_queue, PROCESS p){
-    printf("Adding process %s to the ready queue\n", p.ID);
+QUEUE add_process_to_queue(QUEUE ready_queue, PROCESS p){
+    
     QueueNode* new_node = malloc(sizeof(QueueNode));
     new_node->process = p;
     new_node->next = NULL;
 
-    if (ready_queue->size == 0){
-        ready_queue->start = new_node;
-        ready_queue->end = new_node;
+    if (ready_queue.size == 0){
+        ready_queue.start = new_node;
+        ready_queue.end = new_node;
     } else {
-        ready_queue->end->next = new_node;
-        ready_queue->end = new_node;
+        ready_queue.end->next = new_node;
+        ready_queue.end = new_node;
     }
 
-    ready_queue->size++;
+    ready_queue.size +=1;
+    return ready_queue;
 }
 
 QUEUE remove_process_from_queue(QUEUE ready_queue){
-    printf("Removing process %s from the ready queue\n", ready_queue.start->process.ID);
     // Queue is empty nothing to remove retirn as is
     if (ready_queue.size == 0) {
         return ready_queue; 
@@ -54,183 +54,140 @@ QUEUE remove_process_from_queue(QUEUE ready_queue){
 
 void RoundRobin_Algo(Config* config) {
     
-    PCB* pcb;
+    PCB* pcb = initialize_PCB(config);
     int time = 0;
     int finished = 0;
-    char line1[1000]="";
-    char line2[1000]="";
-    char line3[1000]="";
-    // ready queue represente la liste d'attente
-    QUEUE ready_queue;
-    ready_queue.start=NULL;
-    ready_queue.end=NULL;
-    ready_queue.size=0;
+    char line1[2000] = "";
+    char line2[2000] = "";
+    char line3[2000] = "";
+    char line4[2000] = "";
+    
+    QUEUE ready_queue ;
+    ready_queue.size = 0;
+    ready_queue.start = NULL;
+    ready_queue.end = NULL; 
+    QUEUE io_queue ;
+    io_queue.size = 0;
+    io_queue.start = NULL;
+    io_queue.end = NULL;
 
-    // ready queue represente la liste d'attente
-    QUEUE io_queue;
-    io_queue.start=NULL;
-    io_queue.end=NULL;
-    io_queue.size=0;
-
-    //Quantum
     int quantum;
     printf("Enter Quantum Time: ");
     scanf("%d", &quantum);
     printf("Quantum Time set to %d units\n", quantum);
-    int used_quantum=0;
+    int used_quantum = 0;
 
-    // a variable to check if we can use the cpu or not
-    int cpu_busy = 0;
-    //Initialize PCBs
-    pcb = initialize_PCB(config);
-    printf("pcb initialized\n");
+    printf("PCB initialized\n");
 
-    while(finished < config->process_count){
-        for (int i=0; i<config->process_count; i++){
+    while(finished < config->process_count) {
+        printf("\nTime = %d \n", time);
+        
+        // get the just arrived processes
+        for (int i = 0; i < config->process_count; i++) {
             PROCESS p = config->processes[i];
             
-            // processnot yet arrived
-            if (p.arrival_time > time){
-                continue;
+            if (p.arrival_time == time && !pcb[i].finished && !pcb[i].in_io) { // add to ready queue
+                printf("At time %d: Process %s arrived and added to ready queue\n", time, p.ID);
+                ready_queue = add_process_to_queue(ready_queue, p);
             }
+        }
 
-            //process already finished
-            if(pcb[i].finished && strcmp(ready_queue.start->process.ID , p.ID) != 0){
-                continue;
-            }
-
-
-            // process just arrived 
-            if (p.arrival_time == time){
-                printf("Process %s has arrived and is added to the ready queue\n", p.ID);
-                add_process_to_queue(&ready_queue, p);
-                continue;
-            }             
-
-
-            //process finishes now
-            if(pcb[i].remaining_time==0 && strcmp(ready_queue.start->process.ID , p.ID) == 0){
-                pcb[i].finished=1;
-                finished++;
-                ready_queue = remove_process_from_queue(ready_queue);
-                used_quantum=0;
-                printf("Process %s has finished execution at time %d\n", p.ID, time);
-                snprintf(line3 + strlen(line3), sizeof(line3) - strlen(line3), "at time %d process %s is added to the io queue\n", time, p.ID);
-                strcat(line1,"-- |");
-                strcat(line2, p.ID);
-                cpu_busy=0;
-                continue;
-            }
-
-            //process finishes its quantum now
-            if(pcb[i].remaining_time!=0 && strcmp(ready_queue.start->process.ID , p.ID) == 0 && used_quantum==quantum){ {
-                
-                ready_queue = remove_process_from_queue(ready_queue);
-                add_process_to_queue(&ready_queue, p);
-                cpu_busy=0;
-                used_quantum=0;
-                
-                continue;
-            }
-
-
-            //process in io 
-            if(pcb[i].in_io){
-                //check if it is waiting to execute the io or it is the one executing
-                if (strcmp(io_queue.start->process.ID , p.ID) == 0){//it is the one executing
-                    //decrease the remaining time by one unit
+        // IO 
+        if (io_queue.size > 0) {
+            PROCESS io_p = io_queue.start->process;
+            
+            for (int i = 0; i < config->process_count; i++) {
+                if (strcmp(pcb[i].process.ID, io_p.ID) == 0 && pcb[i].in_io) {
                     pcb[i].io_remaining--;
-                    //if the io finish at this time
-                    if(pcb[i].io_remaining == 0){
-                        //remove from io queue
+                    printf("At time %d: Process %s executes its IO and it rest : %d\n", time, io_p.ID, pcb[i].io_remaining);
+                    
+                    if (pcb[i].io_remaining == 0) {
                         io_queue = remove_process_from_queue(io_queue);
-                        //Exit the io and move to the next one
                         pcb[i].in_io = 0;
                         pcb[i].io_index++;
-                        //add the process to the ready queue
-                        printf("Process %s finished IO and is added back to the ready queue\n", p.ID);
-                        add_process_to_queue(&ready_queue , p);
-                        
+                        printf("At time %d: Process %s finished IO & added back to ready queue\n", time, io_p.ID);
+                        ready_queue = add_process_to_queue(ready_queue, io_p);
                     }
+                    break;
                 }
-                
-                continue;
             }
+        }
 
-           
-            //execute it in cpu
-            if(ready_queue.size >0){
-
-                //check if it is the one to be executed
-                //if the id of the first process in the ready queue is equal to the current process id
-                if(strcmp(ready_queue.start->process.ID , p.ID) == 0){
-                    cpu_busy=1;
-                    if (used_quantum < quantum && pcb[i].executed_time < p.execution_time)
-                    {
-                        used_quantum++;
-                        //execute
-                        pcb[i].executed_time ++;
-                        strcat(line1,"-- ");
-                        strcat(line2, "   ");
-                    }
-
-                }
-                 //if it will start an io
-                if( p.io_count >0 ){// if it has io operations
-                    if (pcb[i].io_index < p.io_count && pcb[i].executed_time == p.io_operations[pcb[i].io_index].start_time){
+        // process 
+        int cpu_executed = 0;
+        if (ready_queue.size > 0) {
+            PROCESS p = ready_queue.start->process;
+            
+            for (int i = 0; i < config->process_count; i++) {// search the process in PCB
+                if (strcmp(pcb[i].process.ID, p.ID) == 0 && !pcb[i].finished && !pcb[i].in_io) {
+                    
+                    pcb[i].executed_time++;
+                    pcb[i].remaining_time--;
+                    used_quantum++;
+                    cpu_executed = 1;
+                    
+                    printf("At time %d: Process %s executs\n", time, p.ID);
+                    
+                    strcat(line1, "--");
+                    strcat(line2, "   ");
+                    strcat(line3, "--");
+                    strcat(line4, "   ");
+                    
+                    if (p.io_count > 0 && pcb[i].io_index < p.io_count && pcb[i].executed_time == p.io_operations[pcb[i].io_index].start_time) {
+                        
+                        printf("At time %d: Process %s starts IO\n", time, p.ID);
                         pcb[i].in_io = 1;
                         pcb[i].io_remaining = p.io_operations[pcb[i].io_index].duration;
-                        add_process_to_queue(&io_queue , p);
                         ready_queue = remove_process_from_queue(ready_queue);
-                        
-                        snprintf(line3 + strlen(line3), sizeof(line3) - strlen(line3), "at time %d process %s is added to the io queue\n", time, p.ID);
-                        strcat(line1,"-- |");
+                        io_queue = add_process_to_queue(io_queue, p);
+                        used_quantum = 0;
                         strcat(line2, p.ID);
-                        break;
+                        strcat(line2, "|");
+                        snprintf(line4 + strlen(line4), sizeof(line4) - strlen(line4),  "%d", time + 1);
                     }
-                }
-                continue;
-            }
-            //execute the io 
-            if(io_queue.size >0){
-
-                //check if it has io to execute 
-                if (pcb[i].in_io){
-                    
-                    //check if it is the one to be executed
-                    if(strcmp(ready_queue.start->process.ID , p.ID) == 0){
+                    //  if finished
+                    else if (pcb[i].remaining_time == 0) {
+                        printf("At time %d: Process %s finishes\n", time, p.ID);
+                        pcb[i].finished = 1;
+                        finished++;
+                        ready_queue = remove_process_from_queue(ready_queue);
+                        used_quantum = 0;
                         
-                    //decrease the remaining time by one unit
-                        pcb[i].io_remaining--;
-                        //if the io finish at this time
-                        if(pcb[i].io_remaining == 0){
-                            //remove from io queue
-                            io_queue = remove_process_from_queue(io_queue);
-                            //Exit the io and move to the next one
-                            pcb[i].in_io = 0;
-                            pcb[i].io_index++;
-                            //add the process to the ready queue
-                            printf("Process %s finished IO and is added back to the ready queue\n", p.ID);
-                            add_process_to_queue(&ready_queue , p);
-                            
-                        }
-                        continue;
-
+                        strcat(line2, p.ID);
+                        strcat(line2, " | ");
+                        snprintf(line4 + strlen(line4), sizeof(line4) - strlen(line4), "%d", time + 1);
                     }
+                    // quantum finished
+                    else if (used_quantum >= quantum) {
+                        printf("At time %d: Process %s quantum finish\n", time, p.ID);
+                        ready_queue = remove_process_from_queue(ready_queue);
+                        ready_queue = add_process_to_queue(ready_queue, p);
+                        used_quantum = 0;
+                        
+                        strcat(line2, p.ID);
+                        strcat(line2, " | ");
+                        snprintf(line4 + strlen(line4), sizeof(line4) - strlen(line4), "%d", time + 1);
+                    }
+                    
+                    break;
                 }
-            
             }
-        }            
+        }
+        
+        // CPU idle
+        if (!cpu_executed) {
+            strcat(line1, "--");
+            strcat(line2, "   ");
+            strcat(line3, "--");
+            strcat(line4, "   ");
+        }
+        
         time++;
-        printf("Time %d:\n", time);
-        printf("%s\n", line1);
-        printf("%s\n", line2);
-        printf("%s\n", line3); 
     }
     
-    }   
-    printf("Gantt Chart:\n");
+    printf("\nGantt Chart \n");
     printf("%s\n", line1);
     printf("%s\n", line2);
     printf("%s\n", line3);
+    printf("%s\n", line4);
 }
