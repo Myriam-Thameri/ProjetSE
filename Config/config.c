@@ -36,6 +36,7 @@ int load_config(char* path , Config* cfg) {
             continue;
         } // ignore comments(the comments begin with #) and empty lines
         
+        
         if (line[0] == '[') {
             char section[20]; // process or process_io
             sscanf(line, "[%[^]]]", section); //extract the name between []
@@ -43,23 +44,26 @@ int load_config(char* path , Config* cfg) {
             //in case it is a process
             if (strncmp(section, "process",7)==0 && strchr(section, '_')==NULL){
                 sscanf( section, "process%d", &process);
-                int p_io=-1;
+                p_io=-1;
             }
             //in case it is a process io
             else if (strncmp(section, "process_io",10)==0 && strchr(section, '_')!=NULL){
                 sscanf( section, "process%d_io%d", &process, &p_io);
+                p_io++;
                 
             }
-        continue; //continue to their attributes
+            continue; //continue to their attributes
         }
 
-        char key[20];
-        char value[20];
-        if(sscanf(line, "%s = %s", key, value) == 2) {
+        char* eq = strchr(line, '=');
+        if (eq != NULL) {
+            *eq = '\0';
+            char* key = line;
+            char* value = eq + 1;
+
             //eliminate the white spaces
             trim(key);
             trim(value);
-            
             //config   att
             if (strcmp(key, "process_count") == 0) { // key=process_count
                 cfg ->process_count = atoi(value);
@@ -87,6 +91,8 @@ int load_config(char* path , Config* cfg) {
 
             //io att
             else {
+                
+            printf("Key: '%s', Value: '%s' p_io :'%d'\n", key, value,p_io);
                 if (strcmp(key , "start_time")==0){
                     cfg -> processes[process].io_operations[p_io].start_time = atoi(value);
                 }

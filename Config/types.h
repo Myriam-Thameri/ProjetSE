@@ -19,4 +19,28 @@ typedef struct
     int io_count;
 } PROCESS;
 
+
+typedef struct {
+    PROCESS process;
+    int remaining_time;
+    int executed_time;
+    int io_index;
+    int io_remaining;
+    int finished;
+    int in_io;
+} PCB;
+
+typedef struct QueueNode{
+    PROCESS process;
+    struct QueueNode* next;
+} QueueNode;
+
+typedef struct{
+    QueueNode node;
+    QueueNode* start;
+    QueueNode* end;
+    int size;
+
+}QUEUE;
+
 #endif // TYPES_H
