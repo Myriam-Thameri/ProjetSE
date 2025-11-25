@@ -10,7 +10,8 @@ typedef struct
     int process_count;
 } Config;
 
-void trim(char* str);
-int load_config( char* filename, Config* cfg);
+void trim(char* str);// function to remove spaces, tabulation, \n   from the start and end of a string to get a clean format 
+
+int load_config( char* filename, Config* cfg); // loads the config from the file and extract the processes and their attributes from the text file
 
 #endif // CONFIG_H

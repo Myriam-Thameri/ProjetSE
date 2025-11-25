@@ -1,5 +1,7 @@
 #include "./Config/types.h"
 #include "./Config/config.h"
+#include "./Algorithms/Algorithms.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -26,6 +28,9 @@ int main(void){
                 printf("    IO Operation %d: Start Time = %d, Duration = %d\n", j+1, io.start_time, io.duration);
             }
         }
+        printf("Configuration loaded successfully.\n");
+        printf("Let s test Round Robin Scheduling Algorithm...\n");
+        //RoundRobin_Algo(CFG);
         
     }
     
