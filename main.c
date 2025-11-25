@@ -1,27 +1,38 @@
+#include "./Config/types.h"
+#include "./Config/config.h"
+#include "./algorithms/PreemptivePriorityIO.h"
 #include <stdio.h>
-#include "config.h"
+#include <stdlib.h>
 
-// declare your scheduler function
-void run_priority_preemptive(PROCESS p[], int count);
 
-int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("Usage: %s <config_file>\n", argv[0]);
-        return 1;
+char* PATH = "./Config/config.txt";
+
+int main(void){
+    Config* CFG = malloc(sizeof(Config));
+    int config_load_res;
+    config_load_res = load_config(PATH , CFG);
+    
+    if(config_load_res == 0) {
+        printf("Error loading config file.\n");
+    }else if (config_load_res == 1) {
+        for(int i=0; i<CFG -> process_count; i++){
+            PROCESS p = CFG -> processes[i];
+            printf("Process ID: %s\n", p.ID);
+            printf("  Coming Time: %d\n", p.arrival_time);
+            printf("  Execution Time: %d\n", p.execution_time);
+            printf("  Priority: %d\n", p.priority);
+            printf("  %s has %d IO Operations;\n",p.ID, p.io_count);
+            for(int j=0; j<p.io_count; j++){
+                IO_OPERATION io = p.io_operations[j];
+                printf("    IO Operation %d: Start Time = %d, Duration = %d\n", j+1, io.start_time, io.duration);
+            }
+        }
+        
     }
 
-    PROCESS processes[MAX_PROCESSES];
-    int count = 0;
+    printf("\nStarting Preemptive Priority Scheduling with IO Simulation:\n\n");
+    run_priority_preemptive(CFG -> processes, CFG -> process_count);
 
-    // load configuration
-    if (load_config(argv[1], processes, &count) != 0) {
-        printf("Failed to load configuration.\n");
-        return 1;
-    }
-
-    printf("Loaded %d processes.\n", count);
-
-    run_priority_preemptive(processes, count);
-
-    return 0;
+    
+   return 0; 
 }

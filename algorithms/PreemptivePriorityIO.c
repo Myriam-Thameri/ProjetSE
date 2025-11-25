@@ -1,43 +1,100 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "../config.h"
+#include <string.h>
+#include "../Config/config.h"
+#include "../Config/types.h"
+#include "PreemptivePriorityIO.h"
 
-// PCB structure for scheduling
+#define MAX_QUEUE 256
 
-typedef struct {
+typedef struct PCB {
     PROCESS *p;
     int remaining_time;
     int executed_time;
     int next_io;
     int io_remaining;
     int finished;
-    int in_io;
+    int arrived;
 } PCB;
 
-int all_finished(PCB pcb[], int n) {
-    for (int i = 0; i < n; i++)
-        if (!pcb[i].finished) return 0;
-    return 1;
-}
+/* ------------------- QUEUE ------------------- */
+typedef struct {
+    PCB* arr[MAX_QUEUE];
+    int front;
+    int rear;
+} Queue;
 
-// find highest priority ready process
-int select_process(PCB pcb[], int current, int n, int time) {
-    int best = -1;
-    for (int i = 0; i < n; i++) {
-        if (pcb[i].finished) continue;
-        if (pcb[i].in_io) continue;
-        if (pcb[i].p->arrival_time > time) continue;
+static void q_init(Queue *q) { q->front = q->rear = 0; }
+static int q_empty(Queue *q) { return q->front == q->rear; }
+static void q_enqueue(Queue *q, PCB *x) { if (q->rear < MAX_QUEUE) q->arr[q->rear++] = x; }
+static PCB* q_dequeue(Queue *q) { return q_empty(q) ? NULL : q->arr[q->front++]; }
+static int q_size(Queue *q) { return q->rear - q->front; }
 
-        if (best == -1 || pcb[i].p->priority < pcb[best].p->priority) {
-            best = i;
+/* pick highest priority among ready items (remove from queue) */
+static PCB* pick_highest_priority_and_remove(Queue *q, int time) {
+    int idx = -1;
+
+    for (int i = q->front; i < q->rear; ++i) {
+        PCB *c = q->arr[i];
+        if (c->finished) continue;
+
+        if (!c->arrived && c->p->arrival_time <= time)
+            c->arrived = 1;
+
+        if (!c->arrived) continue;
+
+        if (idx == -1 ||
+            c->p->priority < q->arr[idx]->p->priority ||
+            (c->p->priority == q->arr[idx]->p->priority &&
+             c->p->arrival_time < q->arr[idx]->p->arrival_time)) {
+            idx = i;
         }
     }
-    return best;
+
+    if (idx == -1) return NULL;
+
+    PCB *res = q->arr[idx];
+    for (int j = idx; j < q->rear - 1; ++j)
+        q->arr[j] = q->arr[j + 1];
+    q->rear--;
+
+    return res;
 }
 
-void run_priority_preemptive(PROCESS p[], int count) {
-    PCB pcb[count];
+/* Process IO queue BEFORE any scheduling */
+static void process_io_queue(Queue *ioq, Queue *readyq, int time) {
+    PCB *tmp[MAX_QUEUE];
+    int count = 0;
 
+    while (!q_empty(ioq)) {
+        PCB *x = q_dequeue(ioq);
+
+        x->io_remaining--;
+
+        if (x->io_remaining <= 0) {
+            x->arrived = 1;
+            q_enqueue(readyq, x);
+            printf("t=%d: %s completes IO and becomes READY\n", time, x->p->ID);
+        } else {
+            tmp[count++] = x;
+        }
+    }
+
+    for (int i = 0; i < count; i++)
+        q_enqueue(ioq, tmp[i]);
+}
+
+/* ------------------- MAIN SIMULATION ------------------- */
+void run_priority_preemptive(PROCESS p[], int count) {
+    if (count <= 0) return;
+
+    PCB pcb[count];
+    Queue readyq, ioq;
+
+    q_init(&readyq);
+    q_init(&ioq);
+
+    /* Initialize PCB */
     for (int i = 0; i < count; i++) {
         pcb[i].p = &p[i];
         pcb[i].remaining_time = p[i].execution_time;
@@ -45,64 +102,84 @@ void run_priority_preemptive(PROCESS p[], int count) {
         pcb[i].next_io = 0;
         pcb[i].io_remaining = 0;
         pcb[i].finished = 0;
-        pcb[i].in_io = 0;
+        pcb[i].arrived = 0;
+        q_enqueue(&readyq, &pcb[i]);
     }
 
+    PCB *running = NULL;
     int time = 0;
-    int running = -1;
 
     printf("--- Simulation Start ---\n");
 
-    while (!all_finished(pcb, count)) {
+    while (1) {
 
-        // handle IO
-        for (int i = 0; i < count; i++) {
-            if (pcb[i].in_io) {
-                pcb[i].io_remaining--;
-                if (pcb[i].io_remaining == 0) {
-                    pcb[i].in_io = 0;
-                    printf("t=%d: P%d finished IO and returned to ready queue\n", time, pcb[i].p->id);
+        /* STEP 1 — Process IO FIRST */
+        process_io_queue(&ioq, &readyq, time);
+
+        /* STEP 2 — If CPU is running, first check IO triggers AFTER executed_time update */
+        if (running) {
+            /* NOT checking IO here */
+        }
+
+        /* STEP 3 — Select next process by priority */
+        PCB *next = pick_highest_priority_and_remove(&readyq, time);
+
+        if (next) {
+            if (running) {
+                if (next->p->priority < running->p->priority) {
+                    printf("t=%d: %s preempted by %s\n",
+                           time, running->p->ID, next->p->ID);
+                    q_enqueue(&readyq, running);
+                    running = next;
+                    printf("t=%d: %s starts running\n", time, running->p->ID);
+                } else {
+                    q_enqueue(&readyq, next);
+                }
+            } else {
+                running = next;
+                printf("t=%d: %s starts running\n", time, running->p->ID);
+            }
+        }
+
+        /* STEP 4 — Execute one time unit */
+        if (running) {
+            running->remaining_time--;
+            running->executed_time++;
+
+            /* STEP 5 — NOW check IO trigger AFTER executed_time++ */
+            if (running->next_io < running->p->io_count) {
+                IO_OPERATION *op = &running->p->io_operations[running->next_io];
+
+                if (running->executed_time == op->start_time) {
+                    running->next_io++;
+
+                    if (op->duration > 0) {
+                        running->io_remaining = op->duration;
+                        q_enqueue(&ioq, running);
+                        printf("t=%d: %s enters IO (%d units)\n",
+                               time+1, running->p->ID, op->duration);
+                        running = NULL;
+                    }
                 }
             }
-        }
 
-        // check if running process must enter IO
-        if (running != -1) {
-            int idx = running;
-            if (pcb[idx].next_io < pcb[idx].p->io_count) {
-                IO_OPERATION *op = &pcb[idx].p->io_operations[pcb[idx].next_io];
-                if (pcb[idx].executed_time == op->start_time) {
-                    printf("t=%d: P%d enters IO (%d units)\n", time, pcb[idx].p->id, op->duration);
-                    pcb[idx].in_io = 1;
-                    pcb[idx].io_remaining = op->duration;
-                    pcb[idx].next_io++;
-                    running = -1;
-                }
+            /* STEP 6 — Only check finish AFTER IO check */
+            if (running && running->remaining_time <= 0) {
+                printf("t=%d: %s FINISHED\n", time + 1, running->p->ID);
+                running->finished = 1;
+                running = NULL;
             }
+
+        } else {
+            printf("t=%d: CPU idle\n", time);
         }
 
-        // select next process
-        int best = select_process(pcb, running, count, time);
+        /* Check global finish */
+        int done = 1;
+        for (int i = 0; i < count; i++)
+            if (!pcb[i].finished) done = 0;
 
-        // preempt if needed
-        if (best != -1 && best != running) {
-            if (running != -1)
-                printf("t=%d: P%d preempted by P%d\n", time, pcb[running].p->id, pcb[best].p->id);
-            running = best;
-            printf("t=%d: P%d is running\n", time, pcb[running].p->id);
-        }
-
-        // execute 1 time unit
-        if (running != -1) {
-            pcb[running].remaining_time--;
-            pcb[running].executed_time++;
-
-            if (pcb[running].remaining_time == 0) {
-                printf("t=%d: P%d finished execution\n", time + 1, pcb[running].p->id);
-                pcb[running].finished = 1;
-                running = -1;
-            }
-        }
+        if (done) break;
 
         time++;
     }
