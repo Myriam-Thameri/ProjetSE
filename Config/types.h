@@ -1,13 +1,11 @@
 #ifndef TYPES_H
-
 #define TYPES_H
 
 typedef struct 
 {
-    int start_time; //After how much time from the beginning of the process
+    int start_time; // After how much time from the beginning of the process
     int duration;
 } IO_OPERATION;
-
 
 typedef struct 
 {
@@ -18,7 +16,6 @@ typedef struct
     IO_OPERATION io_operations[20];
     int io_count;
 } PROCESS;
-
 
 typedef struct {
     PROCESS process;
@@ -35,12 +32,10 @@ typedef struct QueueNode{
     struct QueueNode* next;
 } QueueNode;
 
-typedef struct{
-    QueueNode node;
+typedef struct {
     QueueNode* start;
     QueueNode* end;
     int size;
-
-}QUEUE;
+} QUEUE;
 
 #endif // TYPES_H
