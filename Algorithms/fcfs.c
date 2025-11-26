@@ -78,7 +78,7 @@ void FCFS_Algo(Config* config) {
     int finished = 0;
 
     char gantt[4096] = "";
-    char gantt_t[4096] = "0 ";
+    char gantt_t[4096] = "0";
 
     while (finished < config->process_count) {
 
@@ -177,14 +177,12 @@ void FCFS_Algo(Config* config) {
                 }
             }
         }
-/* Mise à jour de la timeline Gantt */
-           time++;
-            if (finished < config->process_count) {
-             char tb[16];
-             sprintf(tb, " %d ", time);
-              strcat(gantt_t, tb);
-            }
-        
+
+        /* ----------------- Mise à jour de la timeline Gantt ----------------- */
+        time++;
+        char tb[16];
+        sprintf(tb, " %d", time);
+        strcat(gantt_t, tb);
     }
 
     /* ----------------- AFFICHAGE FINAL ----------------- */
@@ -192,6 +190,7 @@ void FCFS_Algo(Config* config) {
     printf("==================== GANTT CHART ====================\n");
     printf("%s|\n", gantt);
     printf("%s\n", gantt_t);
+    printf("Temps total: %d\n", time);
     printf("=====================================================\n");
 
     free(pcb);
