@@ -1,6 +1,6 @@
 #include "./Config/types.h"
 #include "./Config/config.h"
-#include "./Algorithms/Algorithms.h"
+#include "./Algorithms/fcfs.h"
 
 #include <stdio.h>
 #include <stdlib.h>
