@@ -5,8 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* =================== Initialisation PCB =================== */
 PCB* initialize_PCB(Config* config) {
-    static PCB pcb[50];
+    PCB* pcb = malloc(sizeof(PCB) * config->process_count);
+    if (!pcb) {
+        printf("Erreur d'allocation mémoire !\n");
+        exit(1);
+    }
+
     for (int i = 0; i < config->process_count; i++) {
         pcb[i].process = config->processes[i];
         pcb[i].remaining_time = config->processes[i].execution_time;
@@ -19,8 +25,13 @@ PCB* initialize_PCB(Config* config) {
     return pcb;
 }
 
+/* =================== Queue utils =================== */
 QUEUE add_process_to_queue(QUEUE q, PROCESS p) {
     QueueNode* node = malloc(sizeof(QueueNode));
+    if (!node) {
+        printf("Erreur d'allocation mémoire !\n");
+        exit(1);
+    }
     node->process = p;
     node->next = NULL;
 
@@ -36,17 +47,26 @@ QUEUE add_process_to_queue(QUEUE q, PROCESS p) {
 
 QUEUE remove_process_from_queue(QUEUE q) {
     if (q.size == 0) return q;
+
     QueueNode* tmp = q.start;
     q.start = q.start->next;
     free(tmp);
     q.size--;
+    if (q.size == 0) q.end = NULL;
     return q;
 }
 
-/* ======================================================================= */
-/* ============================= FCFS ALGORITHM =========================== */
-/* ======================================================================= */
+/* =================== Trouver PCB par ID =================== */
+PCB* find_pcb_by_id(PCB* pcb, int count, const char* id) {
+    for (int i = 0; i < count; i++) {
+        if (strcmp(pcb[i].process.ID, id) == 0) {
+            return &pcb[i];
+        }
+    }
+    return NULL;
+}
 
+/* =================== FCFS ALGORITHM =================== */
 void FCFS_Algo(Config* config) {
 
     PCB* pcb = initialize_PCB(config);
@@ -62,7 +82,7 @@ void FCFS_Algo(Config* config) {
 
     while (finished < config->process_count) {
 
-        /* ========== ARRIVALS ========== */
+        /* ----------------- 1. NOUVEAUX ARRIVANTS ----------------- */
         for (int i = 0; i < config->process_count; i++) {
             PROCESS p = config->processes[i];
             if (p.arrival_time == time && !pcb[i].finished && !pcb[i].in_io) {
@@ -71,84 +91,108 @@ void FCFS_Algo(Config* config) {
             }
         }
 
-        /* ========== I/O MANAGEMENT ========== */
-        if (ioq.size > 0) {
-            PROCESS p = ioq.start->process;
+        /* ----------------- 2. GESTION DES I/O TERMINÉS ----------------- */
+        PROCESS io_finished_list[50];
+        int io_finished_count = 0;
 
-            for (int i = 0; i < config->process_count; i++) {
-                if (strcmp(pcb[i].process.ID, p.ID) == 0) {
-                    pcb[i].io_remaining--;
+        QueueNode* node = ioq.start;
+        QueueNode* prev = NULL;
 
-                    printf("[t=%d] %s: I/O running (%d left)\n",
-                           time, p.ID, pcb[i].io_remaining);
+        while (node) {
+            PCB* current_pcb = find_pcb_by_id(pcb, config->process_count, node->process.ID);
+            QueueNode* next_node = node->next;
 
-                    if (pcb[i].io_remaining == 0) {
-                        ioq = remove_process_from_queue(ioq);
-                        pcb[i].in_io = 0;
-                        pcb[i].io_index++;
+            if (current_pcb) {
+                current_pcb->io_remaining--;
 
-                        ready = add_process_to_queue(ready, p);
-                        printf("[t=%d] %s: I/O finished → ready queue\n", time, p.ID);
-                    }
+                if (current_pcb->io_remaining == 0) {
+                    printf("[t=%d] %s: I/O finished → ready queue\n", time, current_pcb->process.ID);
+                    current_pcb->in_io = 0;
+                    current_pcb->io_index++;
+
+                    io_finished_list[io_finished_count++] = current_pcb->process;
+
+                    if (prev) prev->next = next_node;
+                    else ioq.start = next_node;
+                    if (node == ioq.end) ioq.end = prev;
+                    free(node);
+                    ioq.size--;
                 }
             }
+
+            prev = node;
+            node = next_node;
         }
 
-        /* ========== CPU EXECUTION ========== */
+        for (int i = 0; i < io_finished_count; i++) {
+            ready = add_process_to_queue(ready, io_finished_list[i]);
+        }
+
+        /* ----------------- 3. EXÉCUTION CPU ----------------- */
         if (ready.size > 0) {
-            PROCESS p = ready.start->process;
+            QueueNode* front = ready.start;
+            PROCESS p = front->process;
+            PCB* current_pcb = find_pcb_by_id(pcb, config->process_count, p.ID);
 
-            for (int i = 0; i < config->process_count; i++) {
-                if (strcmp(pcb[i].process.ID, p.ID) == 0) {
+            if (current_pcb) {
+                int start_io = 0;
+                if (p.io_count > 0 &&
+                    current_pcb->io_index < p.io_count &&
+                    current_pcb->executed_time == p.io_operations[current_pcb->io_index].start_time) {
+                    start_io = 1;
+                }
 
-                    /* exécution */
-                    pcb[i].executed_time++;
-                    pcb[i].remaining_time--;
+                if (start_io) {
+                    ready = remove_process_from_queue(ready);
+                    current_pcb->in_io = 1;
+                    current_pcb->io_remaining = p.io_operations[current_pcb->io_index].duration;
+                    ioq = add_process_to_queue(ioq, p);
+                    printf("[t=%d] %s → starts I/O (duration=%d)\n", time, p.ID,
+                           p.io_operations[current_pcb->io_index].duration);
 
-                    printf("[t=%d] CPU → %s\n", time, p.ID);
+                    // ne rien exécuter ce tick si CPU vide
+                    front = ready.start;
+                    if (!front) current_pcb = NULL;
+                    else {
+                        p = front->process;
+                        current_pcb = find_pcb_by_id(pcb, config->process_count, p.ID);
+                    }
+                }
+
+                if (current_pcb) {
+                    current_pcb->executed_time++;
+                    current_pcb->remaining_time--;
+                    printf("[t=%d] CPU → %s\n", time, current_pcb->process.ID);
 
                     char block[16];
-                    sprintf(block, "|%s", p.ID);
+                    sprintf(block, "|%-4s", current_pcb->process.ID);
                     strcat(gantt, block);
 
-                    /* I/O trigger */
-                    if (p.io_count > 0 &&
-                        pcb[i].io_index < p.io_count &&
-                        pcb[i].executed_time == p.io_operations[pcb[i].io_index].start_time) {
-
-                        printf("[t=%d] %s → starts I/O\n", time, p.ID);
-
+                    if (current_pcb->remaining_time == 0) {
                         ready = remove_process_from_queue(ready);
-                        pcb[i].in_io = 1;
-                        pcb[i].io_remaining = p.io_operations[pcb[i].io_index].duration;
-
-                        ioq = add_process_to_queue(ioq, p);
-                    }
-                    /* FINISHED */
-                    else if (pcb[i].remaining_time == 0) {
-                        printf("[t=%d] %s → FINISHED\n", time, p.ID);
-                        ready = remove_process_from_queue(ready);
-                        pcb[i].finished = 1;
+                        current_pcb->finished = 1;
                         finished++;
+                        printf("[t=%d] %s → FINISHED\n", time, current_pcb->process.ID);
                     }
-
-                    break;
                 }
             }
         }
-        else {
-            strcat(gantt, "|IDLE");
-        }
-
-        /* timeline */
-        char tb[16];
-        sprintf(tb, " %d ", time + 1);
-        strcat(gantt_t, tb);
-
-        time++;
+/* Mise à jour de la timeline Gantt */
+           time++;
+            if (finished < config->process_count) {
+             char tb[16];
+             sprintf(tb, " %d ", time);
+              strcat(gantt_t, tb);
+            }
+        
     }
 
-    printf("\n=========== GANTT ===========\n");
-    printf("%s\n", gantt);
+    /* ----------------- AFFICHAGE FINAL ----------------- */
+    printf("\n");
+    printf("==================== GANTT CHART ====================\n");
+    printf("%s|\n", gantt);
     printf("%s\n", gantt_t);
+    printf("=====================================================\n");
+
+    free(pcb);
 }

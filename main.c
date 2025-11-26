@@ -10,6 +10,7 @@ char* PATH = "./Config/config.txt";
 int main(void) {
 
     Config* CFG = malloc(sizeof(Config));
+
     if (!CFG) {
         printf("Memory allocation failed.\n");
         return 1;
@@ -22,30 +23,15 @@ int main(void) {
         return 1;
     }
 
-    /* ===== DISPLAY LOADED CONFIGURATION ===== */
+    printf("\n=== LOADED PROCESSES ===\n");
     for (int i = 0; i < CFG->process_count; i++) {
         PROCESS p = CFG->processes[i];
-
-        printf("\nProcess ID: %s\n", p.ID);
-        printf("  Arrival Time: %d\n", p.arrival_time);
-        printf("  Execution Time: %d\n", p.execution_time);
-        printf("  Priority: %d\n", p.priority);
-        printf("  IO Operations: %d\n", p.io_count);
-
-        for (int j = 0; j < p.io_count; j++) {
-            IO_OPERATION io = p.io_operations[j];
-            printf("    IO #%d: Start=%d  Duration=%d\n",
-                   j + 1, io.start_time, io.duration);
-        }
+        printf("%s    Arr=%d    Exec=%d\n", p.ID, p.arrival_time, p.execution_time);
     }
 
-    printf("\nConfiguration loaded successfully.\n");
-
-    /* ===== CALL FCFS SCHEDULER ===== */
-    printf("\nRunning FCFS Scheduling Algorithm...\n");
+    printf("\nRunning FCFS Algorithm...\n");
     FCFS_Algo(CFG);
 
     free(CFG);
-
     return 0;
 }
