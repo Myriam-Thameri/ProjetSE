@@ -7,27 +7,25 @@
 
 #define QUANTUM 2
 #define AGING_INTERVAL 5
-#define MAX_PRIORITY 5     // Change this according to your system
+#define MAX_PRIORITY 5
 
-// ---- Helper: Aging mechanism ----
 void apply_aging(PCB* pcbs, int total, int current_time, PCB* running)
 {
     for (int i = 0; i < total; i++) {
         PCB* p = &pcbs[i];
 
-        if (p == running) continue;                 // currently running
-        if (p->finished) continue;                  // ignore finished
-        if (p->in_io) continue;                     // IO processes do not age
+        if (p == running) continue;             
+        if (p->finished) continue;              
+        if (p->in_io) continue;             
         if (p->process.arrival_time > current_time) continue;
 
-        // Process is waiting → increase wait time
         p->wait_time++;
 
         if (p->wait_time >= AGING_INTERVAL) {
             if (p->process.priority < MAX_PRIORITY)
                 p->process.priority++;
 
-            p->wait_time = 0; // reset counter
+            p->wait_time = 0;
 
             printf("Aging: Process %s priority increased to %d\n",
                 p->process.ID, p->process.priority);
@@ -42,7 +40,6 @@ void MultilevelAgingScheduler(Config* config)
     int finished = 0;
     int time = 0;
 
-    // Initialize aging counters
     for(int i = 0; i < total; i++)
         pcbs[i].wait_time = 0;
 
@@ -52,7 +49,6 @@ void MultilevelAgingScheduler(Config* config)
     {
         PCB* next = NULL;
 
-        // Pick highest priority ready process
         for (int i = 0; i < total; i++) {
             PCB* p = &pcbs[i];
 
@@ -62,11 +58,7 @@ void MultilevelAgingScheduler(Config* config)
                 }
             }
         }
-
-        // Apply aging to waiting processes
         apply_aging(pcbs, total, time, next);
-
-        // ---------- EXECUTION ----------
         if (next) {
             int run_for = QUANTUM;
             if (next->remaining_time < run_for)
@@ -76,7 +68,7 @@ void MultilevelAgingScheduler(Config* config)
                 time, time + run_for, next->process.ID, next->process.priority);
 
             next->remaining_time -= run_for;
-            next->wait_time = 0; // running resets waiting
+            next->wait_time = 0;
             time += run_for;
 
             if (next->remaining_time <= 0) {
@@ -86,7 +78,6 @@ void MultilevelAgingScheduler(Config* config)
             }
 
         } else {
-            // CPU is idle
             printf("Time %d: CPU idle\n", time);
             time++;
         }
