@@ -1,7 +1,6 @@
 #include "./Config/types.h"
 #include "./Config/config.h"
 #include "./Algorithms/Algorithms.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -29,13 +28,8 @@ int main(void){
             }
         }
         printf("Configuration loaded successfully.\n");
-        printf("Let s test Round Robin Scheduling Algorithm...\n");
-        RoundRobin_Algo(CFG);
-        printf("Testing Multilevel Scheduler with Aging...\n");
-        MultilevelAgingScheduler(CFG);
-
-        
-    }
-    
-   return 0;
+        printf("Let s test SRT Scheduling Algorithm...\n");
+       SRT_Algo(CFG);
+   }    
+   return 0; 
 }
