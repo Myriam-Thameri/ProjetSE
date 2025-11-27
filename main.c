@@ -45,11 +45,7 @@ int main(void){
     case 2:
         run_priority_preemptive(CFG->processes, CFG->process_count);
         break;
-}
+}}
 
-}
-        
-    }
-    
    return 0;
 }
