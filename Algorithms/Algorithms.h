@@ -14,4 +14,5 @@ QUEUE remove_process_from_queue(QUEUE ready_queue); //remove the first process i
 
 void MultilevelAgingScheduler(Config* config);
 void run_priority_preemptive(PROCESS p[], int count);
+void FCFS_Algo(Config* config);
 #endif // ALGORITHMS_H

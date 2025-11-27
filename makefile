@@ -1,24 +1,43 @@
+# Nom de l'exécutable
+TARGET = simulateur
+
+# Compilateur
 CC = gcc
-# Generate dependency files (.d) for header tracking: -MMD -MP
-CFLAGS = -Wall -Wextra -g -MMD -MP
 
-SRC = main.c Config/config.c Algorithms/RoundRobin.c
-OBJ = $(SRC:.c=.o)
-DEPS = $(SRC:.c=.d)
+# Options de compilation
+CFLAGS = -Wall -I. -IConfig -IAlgorithms
 
-program: $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ) -o program
+# Fichiers sources
+SRC = main.c \
+      Config/config.c \
+      Algorithms/fcfs.c
 
-# Include generated dependency files (ignore missing ones on first run)
--include $(DEPS)
+# Fichiers objets
+OBJ = main.o \
+      Config/config.o \
+      Algorithms/fcfs.o
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+# ===========================
+#        RÈGLE PRINCIPALE
+# ===========================
+$(TARGET): $(OBJ)
+	$(CC) $(OBJ) -o $(TARGET)
 
-.PHONY: clean run
+# ===========================
+#   RÈGLES DE COMPILATION
+# ===========================
 
+main.o: main.c Config/config.h Config/types.h Algorithms/Algorithms.h
+	$(CC) $(CFLAGS) -c main.c -o main.o
+
+Config/config.o: Config/config.c Config/config.h Config/types.h
+	$(CC) $(CFLAGS) -c Config/config.c -o Config/config.o
+
+Algorithms/fcfs.o: Algorithms/fcfs.c Algorithms/Algorithms.h Config/config.h Config/types.h
+	$(CC) $(CFLAGS) -c Algorithms/fcfs.c -o Algorithms/fcfs.o
+
+# ===========================
+#          CLEAN
+# ===========================
 clean:
-	rm -f $(OBJ) $(DEPS) program
-
-run: program
-	./program
+	rm -f main.o Config/config.o Algorithms/fcfs.o $(TARGET)
