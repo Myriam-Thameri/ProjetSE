@@ -7,7 +7,7 @@
 
 #define MAX_QUEUE 256
 
-typedef struct PCB {
+typedef struct {
     PROCESS *p;
     int remaining_time;
     int executed_time;
@@ -15,27 +15,27 @@ typedef struct PCB {
     int io_remaining;
     int finished;
     int arrived;
-} PCB;
+} PCB2;
 
 /* ------------------- QUEUE ------------------- */
 typedef struct {
-    PCB* arr[MAX_QUEUE];
+    PCB2* arr[MAX_QUEUE];
     int front;
     int rear;
 } Queue;
 
 static void q_init(Queue *q) { q->front = q->rear = 0; }
 static int q_empty(Queue *q) { return q->front == q->rear; }
-static void q_enqueue(Queue *q, PCB *x) { if (q->rear < MAX_QUEUE) q->arr[q->rear++] = x; }
-static PCB* q_dequeue(Queue *q) { return q_empty(q) ? NULL : q->arr[q->front++]; }
+static void q_enqueue(Queue *q, PCB2 *x) { if (q->rear < MAX_QUEUE) q->arr[q->rear++] = x; }
+static PCB2* q_dequeue(Queue *q) { return q_empty(q) ? NULL : q->arr[q->front++]; }
 static int q_size(Queue *q) { return q->rear - q->front; }
 
 /* pick highest priority among ready items (remove from queue) */
-static PCB* pick_highest_priority_and_remove(Queue *q, int time) {
+static PCB2* pick_highest_priority_and_remove(Queue *q, int time) {
     int idx = -1;
 
     for (int i = q->front; i < q->rear; ++i) {
-        PCB *c = q->arr[i];
+        PCB2 *c = q->arr[i];
         if (c->finished) continue;
 
         if (!c->arrived && c->p->arrival_time <= time)
@@ -53,7 +53,7 @@ static PCB* pick_highest_priority_and_remove(Queue *q, int time) {
 
     if (idx == -1) return NULL;
 
-    PCB *res = q->arr[idx];
+    PCB2 *res = q->arr[idx];
     for (int j = idx; j < q->rear - 1; ++j)
         q->arr[j] = q->arr[j + 1];
     q->rear--;
@@ -63,11 +63,11 @@ static PCB* pick_highest_priority_and_remove(Queue *q, int time) {
 
 /* Process IO queue BEFORE any scheduling */
 static void process_io_queue(Queue *ioq, Queue *readyq, int time) {
-    PCB *tmp[MAX_QUEUE];
+    PCB2 *tmp[MAX_QUEUE];
     int count = 0;
 
     while (!q_empty(ioq)) {
-        PCB *x = q_dequeue(ioq);
+        PCB2 *x = q_dequeue(ioq);
 
         x->io_remaining--;
 
@@ -88,25 +88,25 @@ static void process_io_queue(Queue *ioq, Queue *readyq, int time) {
 void run_priority_preemptive(PROCESS p[], int count) {
     if (count <= 0) return;
 
-    PCB pcb[count];
+    PCB2 pcb2[count];
     Queue readyq, ioq;
 
     q_init(&readyq);
     q_init(&ioq);
 
-    /* Initialize PCB */
+    /* Initialize PCB2 */
     for (int i = 0; i < count; i++) {
-        pcb[i].p = &p[i];
-        pcb[i].remaining_time = p[i].execution_time;
-        pcb[i].executed_time = 0;
-        pcb[i].next_io = 0;
-        pcb[i].io_remaining = 0;
-        pcb[i].finished = 0;
-        pcb[i].arrived = 0;
-        q_enqueue(&readyq, &pcb[i]);
+        pcb2[i].p = &p[i];
+        pcb2[i].remaining_time = p[i].execution_time;
+        pcb2[i].executed_time = 0;
+        pcb2[i].next_io = 0;
+        pcb2[i].io_remaining = 0;
+        pcb2[i].finished = 0;
+        pcb2[i].arrived = 0;
+        q_enqueue(&readyq, &pcb2[i]);
     }
 
-    PCB *running = NULL;
+    PCB2 *running = NULL;
     int time = 0;
 
     printf("--- Simulation Start ---\n");
@@ -122,7 +122,7 @@ void run_priority_preemptive(PROCESS p[], int count) {
         }
 
         /* STEP 3 — Select next process by priority */
-        PCB *next = pick_highest_priority_and_remove(&readyq, time);
+        PCB2 *next = pick_highest_priority_and_remove(&readyq, time);
 
         if (next) {
             if (running) {
@@ -177,7 +177,7 @@ void run_priority_preemptive(PROCESS p[], int count) {
         /* Check global finish */
         int done = 1;
         for (int i = 0; i < count; i++)
-            if (!pcb[i].finished) done = 0;
+            if (!pcb2[i].finished) done = 0;
 
         if (done) break;
 

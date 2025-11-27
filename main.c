@@ -1,4 +1,4 @@
-#include "../Config/types.h"
+#include "./Config/types.h"
 #include "./Config/config.h"
 #include "./Algorithms/Algorithms.h"
 #include <stdio.h>
@@ -37,6 +37,7 @@ int main(void){
 	printf("Press 4 : Shortest job first\t");
     printf("Press 5 : Multi level aging\t");
 	printf("Press 6 : Multi level static\t");
+	printf("Press 7 : Shot Remaining Time\t");
 	printf("Or press 0 to quit :)");
 	scanf("%d",&ans);
     switch(ans){
@@ -53,10 +54,13 @@ int main(void){
             SJF_Algo(CFG);
             break;
         case 5:
-            MultilevelAginScheduler(CFG);
+            MultilevelAgingScheduler(CFG);
             break;
-        case :
+        case 6:
             MultilevelStaticScheduler(CFG);
+            break;
+        case 7:
+            SRT_Algo(CFG);
             break;
 
 }}

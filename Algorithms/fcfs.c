@@ -5,25 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* =================== Initialisation PCB =================== */
-PCB* initialize_PCB(Config* config) {
-    PCB* pcb = malloc(sizeof(PCB) * config->process_count);
-    if (!pcb) {
-        printf("Erreur d'allocation mémoire !\n");
-        exit(1);
-    }
-
-    for (int i = 0; i < config->process_count; i++) {
-        pcb[i].process = config->processes[i];
-        pcb[i].remaining_time = config->processes[i].execution_time;
-        pcb[i].executed_time = 0;
-        pcb[i].io_index = 0;
-        pcb[i].in_io = 0;
-        pcb[i].io_remaining = 0;
-        pcb[i].finished = 0;
-    }
-    return pcb;
-}
 
 /* =================== Queue utils =================== */
 QUEUE add_process_to_queue(QUEUE q, PROCESS p) {
