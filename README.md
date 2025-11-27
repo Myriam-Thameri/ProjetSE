@@ -57,6 +57,8 @@ PROJETSE
 
 **io_remaining:** remaining time of the current I/O operation
 
+**wait_time** how much time the process have been waiting to get in the cpu
+
 **finished:** boolean attribute (1 = finished, 0 = not finished)
 
 **in_io:** boolean attribute (1 = demanding  to perform I/O, 0 = not )
