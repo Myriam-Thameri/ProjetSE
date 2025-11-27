@@ -35,7 +35,8 @@ int main(void){
 	printf("Press 2 : Preemptive Priority\t");
 	printf("Press 3 : Round Robin\t");
 	printf("Press 4 : Shortest job first\t");
-	printf("Press 5 : Multi level aging\t");
+    printf("Press 5 : Multi level aging\t");
+	printf("Press 6 : Multi level static\t");
 	printf("Or press 0 to quit :)");
 	scanf("%d",&ans);
     switch(ans){
@@ -53,6 +54,9 @@ int main(void){
             break;
         case 5:
             MultilevelAginScheduler(CFG);
+            break;
+        case :
+            MultilevelStaticScheduler(CFG);
             break;
 
 }}

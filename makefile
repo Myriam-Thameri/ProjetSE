@@ -2,7 +2,7 @@ CC = gcc
 # Generate dependency files (.d) for header tracking: -MMD -MP
 CFLAGS = -Wall -Wextra -g -MMD -MP
 
-SRC = main.c Config/config.c Algorithms/RoundRobin.c Algorithms/srt.c
+SRC = main.c Config/config.c Algorithms/RoundRobin.c Algorithms/srt.c Algorithms/MultilevelStatic.c Algorithms/fcfs.c
 OBJ = $(SRC:.c=.o)
 DEPS = $(SRC:.c=.d)
 
