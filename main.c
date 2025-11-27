@@ -31,8 +31,10 @@ int main(void){
         printf("Configuration loaded successfully.\n");
         printf("Let s test Round Robin Scheduling Algorithm...\n");
         //RoundRobin_Algo(CFG);
+        printf("Testing Multilevel Scheduler with Aging...\n");
+        MultilevelAgingScheduler(CFG);
         
     }
     
-   return 0; 
+   return 0;
 }
