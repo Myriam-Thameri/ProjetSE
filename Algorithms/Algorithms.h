@@ -12,5 +12,5 @@ void SRT_add_process(SRT_Scheduler *s, PROCESS *p);
 PROCESS* SRT_next(SRT_Scheduler *s);
 void SRT_destroy(SRT_Scheduler *s);
 void SRT_Algo(Config* config);
-
-#endif
+void MultilevelAgingScheduler(Config* config);
+void run_priority_preemptive(PROCESS p[], int count);
