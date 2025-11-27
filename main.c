@@ -29,11 +29,25 @@ int main(void){
             }
         }
         printf("Configuration loaded successfully.\n");
-        printf("Let s test Round Robin Scheduling Algorithm...\n");
-        RoundRobin_Algo(CFG);
-        printf("Testing Multilevel Scheduler with Aging...\n");
-        MultilevelAgingScheduler(CFG);
-
+	int ans = -1;
+	while(ans != 0){
+        printf("Please choose your algorithm !\t");
+	printf("Press 1 : FIFO\t");
+	printf("Press 2 : Preemptive Priority\t");
+	printf("Press 3 : Round Robin\t");
+	printf("Press 4 : Shortest job first\t");
+	printf("Press 5 : Multi level aging\t");
+	printf("Or press 0 to quit :)");
+	scanf("%d",&ans);
+	switch(ans){
+	case 5:
+		MultilevelAginScheduler(Config* config);
+		break;
+	case 2:
+		run_priority_preemptive(PROCESS p[], int count);
+		break;
+	}
+}
         
     }
     
