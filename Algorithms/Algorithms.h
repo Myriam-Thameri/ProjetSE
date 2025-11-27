@@ -23,6 +23,11 @@ void MultilevelAgingScheduler(Config* config);
 
 void run_priority_preemptive(PROCESS p[], int count);
 
+<<<<<<< HEAD
+=======
+void SJF_Algo(Config* config);
+
+>>>>>>> bb05fc3b0c5e987ecd61400815e61af2371becc5
 void RoundRobin_Algo(Config* config);
 
 PCB* initialize_PCB(Config* config); //return an initialized PCB for each process in a list 
