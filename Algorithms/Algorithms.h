@@ -12,4 +12,6 @@ QUEUE add_process_to_queue(QUEUE ready_queue, PROCESS p); // add a node in the e
 
 QUEUE remove_process_from_queue(QUEUE ready_queue); //remove the first process in the queue and return the updated queue
 
+void MultilevelAgingScheduler(Config* config);
+
 #endif // ALGORITHMS_H

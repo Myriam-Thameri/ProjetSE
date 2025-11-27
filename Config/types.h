@@ -28,6 +28,7 @@ typedef struct {
     int io_remaining;
     int finished;
     int in_io;
+    int wait_time;
 } PCB;
 
 typedef struct QueueNode{
@@ -42,5 +43,6 @@ typedef struct{
     int size;
 
 }QUEUE;
+
 
 #endif // TYPES_H
