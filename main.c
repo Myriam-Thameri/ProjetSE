@@ -40,7 +40,7 @@ int main(void){
 	scanf("%d",&ans);
     switch(ans){
         case 1:
-            //Insert fifo algorithm from alogirthms.h
+            FCFS_Algo(CFG);
             break;
         case 2:
             run_priority_preemptive(CFG->processes, CFG->process_count);

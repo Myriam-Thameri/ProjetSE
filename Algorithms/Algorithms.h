@@ -22,11 +22,7 @@ void SRT_Algo(Config* config);
 void MultilevelAgingScheduler(Config* config);
 
 void run_priority_preemptive(PROCESS p[], int count);
-<<<<<<< HEAD
 
-=======
-void SJF_Algo(Config* config);
->>>>>>> 3940cb79db636b3df446f48345458874387bc6d3
 void RoundRobin_Algo(Config* config);
 
 PCB* initialize_PCB(Config* config); //return an initialized PCB for each process in a list 
@@ -34,5 +30,7 @@ PCB* initialize_PCB(Config* config); //return an initialized PCB for each proces
 QUEUE add_process_to_queue(QUEUE ready_queue, PROCESS p); // add a node in the end of the ready queue and then return it 
 
 QUEUE remove_process_from_queue(QUEUE ready_queue); //remove the first process in the queue and return the updated queue
+
+void FCFS_Algo(Config* config);
 
 #endif // ALGORITHMS_H
