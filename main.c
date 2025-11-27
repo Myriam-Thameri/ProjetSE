@@ -1,7 +1,6 @@
-#include "./Config/types.h"
+#include "../Config/types.h"
 #include "./Config/config.h"
 #include "./Algorithms/Algorithms.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -39,14 +38,15 @@ int main(void){
 	printf("Press 5 : Multi level aging\t");
 	printf("Or press 0 to quit :)");
 	scanf("%d",&ans);
-	switch(ans){
-	case 5:
-		MultilevelAginScheduler(Config* config);
-		break;
-	case 2:
-		run_priority_preemptive(PROCESS p[], int count);
-		break;
-	}
+    switch(ans){
+    case 5:
+        MultilevelAginScheduler(CFG);
+        break;
+    case 2:
+        run_priority_preemptive(CFG->processes, CFG->process_count);
+        break;
+}
+
 }
         
     }
