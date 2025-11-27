@@ -39,12 +39,22 @@ int main(void){
 	printf("Or press 0 to quit :)");
 	scanf("%d",&ans);
     switch(ans){
-    case 5:
-        MultilevelAginScheduler(CFG);
-        break;
-    case 2:
-        run_priority_preemptive(CFG->processes, CFG->process_count);
-        break;
+        case 1:
+            //Insert fifo algorithm from alogirthms.h
+            break;
+        case 2:
+            run_priority_preemptive(CFG->processes, CFG->process_count);
+            break;
+        case 3:
+            RoundRobin_Algo(CFG);
+            break;
+        case 4:
+            SJF_Algo(CFG);
+            break;
+        case 5:
+            MultilevelAginScheduler(CFG);
+            break;
+
 }}
 
    return 0;
