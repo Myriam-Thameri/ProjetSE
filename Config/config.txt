@@ -1,4 +1,4 @@
-#config filr
+#config file: this is a comment 
 
 process_count = 7
 

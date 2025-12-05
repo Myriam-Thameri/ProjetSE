@@ -1,7 +1,6 @@
 #include "./Config/types.h"
 #include "./Config/config.h"
 #include "./Algorithms/Algorithms.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -29,10 +28,42 @@ int main(void){
             }
         }
         printf("Configuration loaded successfully.\n");
-        printf("Let s test Round Robin Scheduling Algorithm...\n");
-        RoundRobin_Algo(CFG);
-        
+	int ans = -1;
+	while(ans != 0){
+        printf("Please choose your algorithm !\t");
+	printf("Press 1 : FIFO\t");
+	printf("Press 2 : Preemptive Priority\t");
+	printf("Press 3 : Round Robin\t");
+	printf("Press 4 : Shortest job first\t");
+    printf("Press 5 : Multi level aging\t");
+	printf("Press 6 : Multi level static\t");
+	printf("Press 7 : Shot Remaining Time\t");
+	printf("Or press 0 to quit :)");
+	scanf("%d",&ans);
+    switch(ans){
+        case 1:
+            FCFS_Algo(CFG);
+            break;
+        case 2:
+            run_priority_preemptive(CFG->processes, CFG->process_count);
+            break;
+        case 3:
+            RoundRobin_Algo(CFG);
+            break;
+        case 4:
+            SJF_Algo(CFG);
+            break;
+        case 5:
+            MultilevelAgingScheduler(CFG);
+            break;
+        case 6:
+            MultilevelStaticScheduler(CFG);
+            break;
+        case 7:
+            SRT_Algo(CFG);
+            break;
+
+}}
     }
-    
-   return 0; 
+    return 0;
 }
