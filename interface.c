@@ -2,22 +2,37 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include <limits.h>
 
-// --- Structures de Données ---
+// --- Structures de Données (Adaptées pour la visualisation) ---
 
 typedef struct {
-    int pid;
-    int arrival_time;
+    int start_time;
     int duration;
-    int remaining_time;
-    int priority;       // 1 = Haute, 5 = Basse
-    int wait_time;      // Pour l'Aging
+} VisIO;
+
+typedef struct {
+    char id[10];
+    int arrival_time;
+    int duration;       
+    int remaining_time; 
+    int executed_time;  
+    
+    int priority;       
+    int wait_time;      
     const char *color;
+
+    VisIO ios[20];      
+    int io_count;       
+    int current_io_idx; 
+    int io_remaining;   
+    int in_io;          
+    int finished;       
 } VisProcess;
 
 typedef struct {
-    int pid;
+    char pid[10]; // ID du processus (P01, P02...)
     double start;
     double duration;
     const char *color;
@@ -25,38 +40,123 @@ typedef struct {
 
 // --- Données Globales ---
 
-#define MAX_SLICES 2000
+#define MAX_SLICES 5000
 GanttSlice slices[MAX_SLICES];
 int slice_count = 0;
 
-VisProcess initial_processes[] = {
-    {1, 0,  10, 10, 3, 0, "#E06C75"}, // Rouge
-    {2, 2,  6,  6,  1, 0, "#98C379"}, // Vert (Prio Haute)
-    {3, 4,  8,  8,  4, 0, "#61AFEF"}, // Bleu
-    {4, 6,  4,  4,  2, 0, "#E5C07B"}, // Jaune
-    {5, 8,  5,  5,  3, 0, "#C678DD"}  // Violet
+// Tableau dynamique (Max 20 processus comme dans votre config.h)
+VisProcess initial_processes[20];
+int total_processes = 0;
+
+// Couleurs prédéfinies pour les processus
+const char* COLORS[] = {
+    "#E06C75", "#98C379", "#61AFEF", "#E5C07B", "#C678DD", "#56B6C2", "#D19A66", 
+    "#F44336", "#2196F3", "#4CAF50", "#FFEB3B", "#9C27B0"
 };
-int total_processes = 5;
 
-// Variables d'état
 static int current_algo_index = 0;
-static int current_quantum = 3;
+static int current_quantum = 3; // Valeur par défaut, sera écrasée par l'UI
 
-// Widgets globaux
 static GtkWidget *drawing_area; 
 static GtkWidget *quantum_control_box; 
 
+// --- PARSER DE CONFIGURATION (Adapté de votre Config/config.c) ---
+
+void trim(char* s) {
+    char *start = s;
+    while(*start && isspace((unsigned char)*start)) start++;
+    memmove(s, start, strlen(start)+1);
+    char* end = s + strlen(s) - 1;
+    while(end > s && isspace((unsigned char)*end)) *end-- = '\0';
+}
+
+void load_config_file(const char* path) {
+    FILE* file = fopen(path, "r");
+    if (!file) {
+        printf("Erreur: Impossible d'ouvrir %s. Utilisation de données par défaut.\n", path);
+        return;
+    }
+
+    char line[256];
+    int current_proc_idx = -1;
+    int current_io_idx = -1;
+    total_processes = 0;
+
+    while(fgets(line, sizeof(line), file)) {
+        trim(line);
+        if (line[0] == '#' || strlen(line) == 0) continue;
+
+        if (line[0] == '[') {
+            // Détection de section
+            if (strstr(line, "process") && !strstr(line, "process_io")) {
+                // Nouveau Processus
+                total_processes++;
+                current_proc_idx = total_processes - 1;
+                current_io_idx = -1;
+                
+                // Init par défaut
+                VisProcess *p = &initial_processes[current_proc_idx];
+                strcpy(p->id, "UNK");
+                p->arrival_time = 0;
+                p->duration = 0;
+                p->priority = 0;
+                p->io_count = 0;
+                p->color = COLORS[current_proc_idx % 12]; // Assigner une couleur
+            }
+            else if (strstr(line, "process_io")) {
+                // Nouvelle IO pour le processus en cours
+                if (current_proc_idx >= 0) {
+                    VisProcess *p = &initial_processes[current_proc_idx];
+                    // On ne se fie pas au "io_count" du fichier pour l'index, on incrémente
+                    // (Votre parser original utilise process%d_io%d mais ici on simplifie la lecture séquentielle)
+                    // On suppose que les blocs IO suivent le bloc process
+                    current_io_idx++; 
+                    // p->io_count sera mis à jour ou lu
+                }
+            }
+            continue;
+        }
+
+        char* eq = strchr(line, '=');
+        if (eq) {
+            *eq = '\0';
+            char* key = line;
+            char* value = eq + 1;
+            trim(key); trim(value);
+
+            if (current_proc_idx >= 0) {
+                VisProcess *p = &initial_processes[current_proc_idx];
+                
+                // Attributs Processus
+                if (strcmp(key, "ID") == 0) strcpy(p->id, value);
+                else if (strcmp(key, "arrival_time") == 0) p->arrival_time = atoi(value);
+                else if (strcmp(key, "execution_time") == 0) p->duration = atoi(value);
+                else if (strcmp(key, "priority") == 0) p->priority = atoi(value);
+                else if (strcmp(key, "io_count") == 0) p->io_count = atoi(value); // On stocke, mais on remplit ios[] dynamiquement
+                
+                // Attributs IO
+                if (current_io_idx >= 0 && current_io_idx < 20) {
+                     if (strcmp(key, "start_time") == 0) p->ios[current_io_idx].start_time = atoi(value);
+                     else if (strcmp(key, "duration") == 0) p->ios[current_io_idx].duration = atoi(value);
+                }
+            }
+        }
+    }
+    fclose(file);
+    printf("Config chargée: %d processus trouvés.\n", total_processes);
+}
+
 // --- Moteur de Simulation ---
 
-void add_slice(int pid, int start, int duration, const char* color) {
+void add_slice(const char* pid, int start, int duration, const char* color) {
     if (slice_count >= MAX_SLICES) return;
     
-    // Fusion visuelle si c'est le même processus qui continue
-    if (slice_count > 0 && slices[slice_count-1].pid == pid && 
+    // Fusion visuelle
+    if (slice_count > 0 && strcmp(slices[slice_count-1].pid, pid) == 0 && 
         (slices[slice_count-1].start + slices[slice_count-1].duration) == start) {
         slices[slice_count-1].duration += duration;
     } else {
-        slices[slice_count].pid = pid;
+        strcpy(slices[slice_count].pid, pid);
         slices[slice_count].start = start;
         slices[slice_count].duration = duration;
         slices[slice_count].color = color;
@@ -64,44 +164,121 @@ void add_slice(int pid, int start, int duration, const char* color) {
     }
 }
 
-// 1. FCFS
-void run_fcfs(VisProcess procs[], int count) {
-    int current_time = 0;
-    // Tri par arrivée
-    for(int i=0; i<count-1; i++) {
-        for(int j=0; j<count-i-1; j++) {
-            if(procs[j].arrival_time > procs[j+1].arrival_time) {
-                VisProcess temp = procs[j]; procs[j] = procs[j+1]; procs[j+1] = temp;
+void handle_io_background(VisProcess procs[], int count) {
+    for (int i = 0; i < count; i++) {
+        if (procs[i].in_io) {
+            procs[i].io_remaining--;
+            if (procs[i].io_remaining <= 0) {
+                procs[i].in_io = 0;
+                procs[i].current_io_idx++;
             }
         }
-    }
-    for (int i = 0; i < count; i++) {
-        if (current_time < procs[i].arrival_time) current_time = procs[i].arrival_time;
-        add_slice(procs[i].pid, current_time, procs[i].duration, procs[i].color);
-        current_time += procs[i].duration;
     }
 }
 
-// 2. Round Robin (Dynamique)
-void run_rr(VisProcess procs[], int count) {
-    int quantum = current_quantum;
-    if (quantum < 1) quantum = 1;
+int check_start_io(VisProcess *p) {
+    // On vérifie par rapport au io_count lu dans le fichier
+    if (p->current_io_idx < p->io_count) {
+        if (p->executed_time == p->ios[p->current_io_idx].start_time) {
+            p->in_io = 1;
+            p->io_remaining = p->ios[p->current_io_idx].duration;
+            return 1; 
+        }
+    }
+    return 0; 
+}
+
+// --- ALGORITHMES ---
+
+// 1. FCFS
+void run_fcfs(VisProcess procs[], int count) {
     int current_time = 0;
     int completed = 0;
-    
+
     while (completed < count) {
-        int progress = 0;
+        handle_io_background(procs, count);
+
+        int idx = -1;
+        int min_arrival = INT_MAX;
+
         for (int i = 0; i < count; i++) {
-            if (procs[i].remaining_time > 0 && procs[i].arrival_time <= current_time) {
-                int run_time = (procs[i].remaining_time > quantum) ? quantum : procs[i].remaining_time;
-                add_slice(procs[i].pid, current_time, run_time, procs[i].color);
-                procs[i].remaining_time -= run_time;
-                current_time += run_time;
-                progress = 1;
-                if (procs[i].remaining_time == 0) completed++;
+            if (!procs[i].finished && !procs[i].in_io && procs[i].arrival_time <= current_time) {
+                if (procs[i].arrival_time < min_arrival) {
+                    min_arrival = procs[i].arrival_time;
+                    idx = i;
+                }
             }
         }
-        if (!progress) current_time++;
+
+        if (idx != -1) {
+            VisProcess *p = &procs[idx];
+            add_slice(p->id, current_time, 1, p->color);
+            p->remaining_time--;
+            p->executed_time++;
+            check_start_io(p);
+            if (p->remaining_time == 0) { p->finished = 1; completed++; }
+        } 
+        current_time++;
+    }
+}
+
+// 2. Round Robin
+void run_rr(VisProcess procs[], int count) {
+    int current_time = 0;
+    int completed = 0;
+    int quantum = current_quantum;
+    if (quantum < 1) quantum = 1;
+
+    int queue[2000];
+    int q_start = 0, q_end = 0;
+    int in_queue[100] = {0}; 
+
+    for(int i=0; i<count; i++) {
+        if (procs[i].arrival_time == 0) { queue[q_end++] = i; in_queue[i] = 1; }
+    }
+
+    int current_proc_idx = -1;
+    int quantum_counter = 0;
+
+    while (completed < count) {
+        // Gestion IO (Retour en queue)
+        for (int i = 0; i < count; i++) {
+            if (procs[i].in_io) {
+                procs[i].io_remaining--;
+                if (procs[i].io_remaining <= 0) {
+                    procs[i].in_io = 0; procs[i].current_io_idx++;
+                    if (!procs[i].finished) { queue[q_end++] = i; in_queue[i] = 1; }
+                }
+            }
+        }
+        // Nouveaux arrivants
+        for (int i = 0; i < count; i++) {
+            if (!in_queue[i] && !procs[i].finished && !procs[i].in_io && procs[i].arrival_time == current_time) {
+                queue[q_end++] = i; in_queue[i] = 1;
+            }
+        }
+
+        if (current_proc_idx == -1 && q_start < q_end) {
+            current_proc_idx = queue[q_start++];
+            in_queue[current_proc_idx] = 0; 
+            quantum_counter = 0;
+        }
+
+        if (current_proc_idx != -1) {
+            VisProcess *p = &procs[current_proc_idx];
+            add_slice(p->id, current_time, 1, p->color);
+            p->remaining_time--;
+            p->executed_time++;
+            quantum_counter++;
+
+            int io_started = check_start_io(p);
+            if (p->remaining_time == 0) { p->finished = 1; completed++; current_proc_idx = -1; }
+            else if (io_started) { current_proc_idx = -1; }
+            else if (quantum_counter >= quantum) {
+                queue[q_end++] = current_proc_idx; in_queue[current_proc_idx] = 1; current_proc_idx = -1;
+            }
+        }
+        current_time++;
     }
 }
 
@@ -109,25 +286,34 @@ void run_rr(VisProcess procs[], int count) {
 void run_sjf(VisProcess procs[], int count) {
     int current_time = 0;
     int completed = 0;
+    int current_proc_idx = -1;
+
     while (completed < count) {
-        int idx = -1;
-        int min_dur = INT_MAX;
-        for (int i = 0; i < count; i++) {
-            if (procs[i].arrival_time <= current_time && procs[i].remaining_time > 0) {
-                if (procs[i].duration < min_dur) {
-                    min_dur = procs[i].duration;
-                    idx = i;
+        handle_io_background(procs, count);
+
+        if (current_proc_idx == -1) {
+            int idx = -1;
+            int min_dur = INT_MAX;
+            for (int i = 0; i < count; i++) {
+                if (!procs[i].finished && !procs[i].in_io && procs[i].arrival_time <= current_time) {
+                    if (procs[i].duration < min_dur) {
+                        min_dur = procs[i].duration;
+                        idx = i;
+                    }
                 }
             }
+            current_proc_idx = idx;
         }
-        if (idx != -1) {
-            add_slice(procs[idx].pid, current_time, procs[idx].duration, procs[idx].color);
-            current_time += procs[idx].duration;
-            procs[idx].remaining_time = 0;
-            completed++;
-        } else {
-            current_time++;
+
+        if (current_proc_idx != -1) {
+            VisProcess *p = &procs[current_proc_idx];
+            add_slice(p->id, current_time, 1, p->color);
+            p->remaining_time--;
+            p->executed_time++;
+            if (check_start_io(p)) current_proc_idx = -1;
+            else if (p->remaining_time == 0) { p->finished = 1; completed++; current_proc_idx = -1; }
         }
+        current_time++;
     }
 }
 
@@ -135,134 +321,118 @@ void run_sjf(VisProcess procs[], int count) {
 void run_priority(VisProcess procs[], int count) {
     int current_time = 0;
     int completed = 0;
+
     while (completed < count) {
+        handle_io_background(procs, count);
+
         int idx = -1;
         int best_prio = INT_MAX;
         for (int i = 0; i < count; i++) {
-            if (procs[i].arrival_time <= current_time && procs[i].remaining_time > 0) {
-                if (procs[i].priority < best_prio) {
-                    best_prio = procs[i].priority;
-                    idx = i;
-                }
+            if (!procs[i].finished && !procs[i].in_io && procs[i].arrival_time <= current_time) {
+                // Config: Priority 1 is high, 5 is low
+                if (procs[i].priority < best_prio) { best_prio = procs[i].priority; idx = i; }
             }
         }
+
         if (idx != -1) {
-            add_slice(procs[idx].pid, current_time, 1, procs[idx].color);
-            procs[idx].remaining_time--;
-            current_time++;
-            if (procs[idx].remaining_time == 0) completed++;
-        } else {
-            current_time++;
+            VisProcess *p = &procs[idx];
+            add_slice(p->id, current_time, 1, p->color);
+            p->remaining_time--;
+            p->executed_time++;
+            check_start_io(p); 
+            if (p->remaining_time == 0) { p->finished = 1; completed++; }
         }
+        current_time++;
     }
 }
 
-// 5. Multilevel Static
-void run_multilevel_static(VisProcess procs[], int count) {
-    int current_time = 0;
-    int completed = 0;
-    int quantum = 2;
-    while (completed < count) {
-        int idx = -1;
-        int best_prio = INT_MAX;
-        for (int i = 0; i < count; i++) {
-            if (procs[i].arrival_time <= current_time && procs[i].remaining_time > 0) {
-                if (procs[i].priority < best_prio) {
-                    best_prio = procs[i].priority;
-                    idx = i;
-                }
-            }
-        }
-        if (idx != -1) {
-            int run = (procs[idx].remaining_time > quantum) ? quantum : procs[idx].remaining_time;
-            add_slice(procs[idx].pid, current_time, run, procs[idx].color);
-            procs[idx].remaining_time -= run;
-            current_time += run;
-            if (procs[idx].remaining_time == 0) completed++;
-        } else {
-            current_time++;
-        }
-    }
-}
+// 5. Multilevel Static (Simulé comme Prio Préemptive)
+void run_multilevel_static(VisProcess procs[], int count) { run_priority(procs, count); }
 
 // 6. Multilevel Aging
 void run_multilevel_aging(VisProcess procs[], int count) {
     int current_time = 0;
     int completed = 0;
-    int quantum = 2;
     while (completed < count) {
+        handle_io_background(procs, count);
+        // Aging
+        for(int i=0; i<count; i++) {
+            if (!procs[i].finished && !procs[i].in_io && procs[i].arrival_time <= current_time) {
+                procs[i].wait_time++;
+                if(procs[i].wait_time >= 5 && procs[i].priority > 1) {
+                    procs[i].priority--; procs[i].wait_time = 0;
+                }
+            }
+        }
+        // Selection
         int idx = -1;
         int best_prio = INT_MAX;
         for (int i = 0; i < count; i++) {
-            if (procs[i].arrival_time <= current_time && procs[i].remaining_time > 0) {
-                if (procs[i].priority < best_prio) {
-                    best_prio = procs[i].priority;
-                    idx = i;
-                }
-            }
-        }
-        // Aging
-        for(int i=0; i<count; i++) {
-            if (i != idx && procs[i].arrival_time <= current_time && procs[i].remaining_time > 0) {
-                procs[i].wait_time++;
-                if(procs[i].wait_time >= 5 && procs[i].priority > 1) {
-                    procs[i].priority--;
-                    procs[i].wait_time = 0;
-                }
+            if (!procs[i].finished && !procs[i].in_io && procs[i].arrival_time <= current_time) {
+                if (procs[i].priority < best_prio) { best_prio = procs[i].priority; idx = i; }
             }
         }
         if (idx != -1) {
-            int run = (procs[idx].remaining_time > quantum) ? quantum : procs[idx].remaining_time;
-            add_slice(procs[idx].pid, current_time, run, procs[idx].color);
-            procs[idx].remaining_time -= run;
-            current_time += run;
-            procs[idx].wait_time = 0;
-            if (procs[idx].remaining_time == 0) completed++;
-        } else {
-            current_time++;
+            VisProcess *p = &procs[idx];
+            p->wait_time = 0; 
+            add_slice(p->id, current_time, 1, p->color);
+            p->remaining_time--;
+            p->executed_time++;
+            check_start_io(p);
+            if (p->remaining_time == 0) { p->finished = 1; completed++; }
         }
+        current_time++;
     }
 }
 
-// 7. SRT (Shortest Remaining Time)
+// 7. SRT
 void run_srt(VisProcess procs[], int count) {
     int current_time = 0;
     int completed = 0;
     while (completed < count) {
+        handle_io_background(procs, count);
         int idx = -1;
         int min_rem = INT_MAX;
         for (int i = 0; i < count; i++) {
-            if (procs[i].arrival_time <= current_time && procs[i].remaining_time > 0) {
-                if (procs[i].remaining_time < min_rem) {
-                    min_rem = procs[i].remaining_time;
-                    idx = i;
-                }
+            if (!procs[i].finished && !procs[i].in_io && procs[i].arrival_time <= current_time) {
+                if (procs[i].remaining_time < min_rem) { min_rem = procs[i].remaining_time; idx = i; }
             }
         }
         if (idx != -1) {
-            add_slice(procs[idx].pid, current_time, 1, procs[idx].color);
-            procs[idx].remaining_time--;
-            current_time++;
-            if (procs[idx].remaining_time == 0) completed++;
-        } else {
-            current_time++;
+            VisProcess *p = &procs[idx];
+            add_slice(p->id, current_time, 1, p->color);
+            p->remaining_time--;
+            p->executed_time++;
+            check_start_io(p);
+            if (p->remaining_time == 0) { p->finished = 1; completed++; }
         }
+        current_time++;
     }
 }
 
 void simulate_current_algo() {
     slice_count = 0;
-    VisProcess working_procs[5];
-    for(int i=0; i<5; i++) working_procs[i] = initial_processes[i];
+    // Copie de travail pour ne pas modifier les données initiales
+    VisProcess working_procs[20]; 
+    for(int i=0; i<total_processes; i++) {
+        working_procs[i] = initial_processes[i];
+        working_procs[i].remaining_time = working_procs[i].duration;
+        working_procs[i].executed_time = 0;
+        working_procs[i].finished = 0;
+        working_procs[i].in_io = 0;
+        working_procs[i].current_io_idx = 0;
+        working_procs[i].wait_time = 0;
+        working_procs[i].io_remaining = 0;
+    }
 
     switch(current_algo_index) {
-        case 0: run_fcfs(working_procs, 5); break;
-        case 1: run_rr(working_procs, 5); break;
-        case 2: run_sjf(working_procs, 5); break;
-        case 3: run_priority(working_procs, 5); break;
-        case 4: run_multilevel_static(working_procs, 5); break;
-        case 5: run_multilevel_aging(working_procs, 5); break;
-        case 6: run_srt(working_procs, 5); break;
+        case 0: run_fcfs(working_procs, total_processes); break;
+        case 1: run_rr(working_procs, total_processes); break;
+        case 2: run_sjf(working_procs, total_processes); break;
+        case 3: run_priority(working_procs, total_processes); break;
+        case 4: run_multilevel_static(working_procs, total_processes); break;
+        case 5: run_multilevel_aging(working_procs, total_processes); break;
+        case 6: run_srt(working_procs, total_processes); break;
     }
 }
 
@@ -277,17 +447,15 @@ static void draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int heig
             max_end = slices[i].start + slices[i].duration;
     max_end += 2;
 
-    // --- Configuration Scrolling ---
     double start_x = 20;
-    double scale = 30.0; // Zoom
+    double scale = 25.0; 
     double axis_y = height - 50;
 
+    // Redimensionnement dynamique pour le Scroll
     int needed_width = start_x + (max_end * scale) + 50;
-    if (needed_width > width) {
-        gtk_drawing_area_set_content_width(area, needed_width);
-    }
+    if (needed_width > width) gtk_drawing_area_set_content_width(area, needed_width);
 
-    // --- Dessin ---
+    // Fond
     cairo_set_source_rgb(cr, 0.18, 0.20, 0.23); 
     cairo_paint(cr);
 
@@ -295,14 +463,11 @@ static void draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int heig
     cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr, 11);
 
-    // Boucle pour chaque tick (1 par 1)
+    // Grille
     for (int t = 0; t <= max_end; t++) {
         double x = start_x + (t * scale);
-        
         cairo_set_source_rgba(cr, 1, 1, 1, 0.3); 
-        cairo_move_to(cr, x, 30); 
-        cairo_line_to(cr, x, axis_y); 
-        cairo_stroke(cr);
+        cairo_move_to(cr, x, 30); cairo_line_to(cr, x, axis_y); cairo_stroke(cr);
         
         cairo_set_source_rgb(cr, 1, 1, 1);
         char num[20]; sprintf(num, "%d", t);
@@ -335,16 +500,14 @@ static void draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int heig
         cairo_set_line_width(cr, 1);
         cairo_stroke(cr);
 
-        if (w > 15) {
+        if (w > 20) {
             cairo_set_source_rgb(cr, 0, 0, 0);
-            char buf[10]; sprintf(buf, "P%d", s.pid);
-            cairo_move_to(cr, x + (w/2) - 8, y + 25);
+            char buf[20]; sprintf(buf, "%s", s.pid);
+            cairo_move_to(cr, x + 5, y + 25);
             cairo_show_text(cr, buf);
         }
     }
 }
-
-// --- Callbacks ---
 
 static void on_quantum_changed(GtkSpinButton *spin, gpointer data) {
     current_quantum = gtk_spin_button_get_value_as_int(spin);
@@ -355,12 +518,8 @@ static void on_algo_changed(GObject *object, GParamSpec *pspec, gpointer data) {
     GtkDropDown *dropdown = GTK_DROP_DOWN(object);
     current_algo_index = gtk_drop_down_get_selected(dropdown);
     
-    // Afficher contrôle quantum seulement pour Round Robin (Index 1)
-    if (current_algo_index == 1) {
-        gtk_widget_set_visible(quantum_control_box, TRUE);
-    } else {
-        gtk_widget_set_visible(quantum_control_box, FALSE);
-    }
+    if (current_algo_index == 1) gtk_widget_set_visible(quantum_control_box, TRUE);
+    else gtk_widget_set_visible(quantum_control_box, FALSE);
 
     if (drawing_area) gtk_widget_queue_draw(drawing_area);
 }
@@ -384,13 +543,17 @@ static void load_css() {
 
 static void activate(GtkApplication *app, gpointer user_data) {
     load_css();
+    
+    // CHARGEMENT DE LA CONFIG (Chemin relatif supposé correct)
+    load_config_file("Config/config.txt");
+
     GtkWidget *window = gtk_application_window_new(app);
-    gtk_window_set_title(GTK_WINDOW(window), "Simulateur Complet d'Ordonnancement");
-    gtk_window_set_default_size(GTK_WINDOW(window), 1000, 600);
+    gtk_window_set_title(GTK_WINDOW(window), "Simulateur OS - GTK4");
+    gtk_window_set_default_size(GTK_WINDOW(window), 1100, 600);
 
     GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_window_set_child(GTK_WINDOW(window), paned);
-    gtk_paned_set_position(GTK_PANED(paned), 300);
+    gtk_paned_set_position(GTK_PANED(paned), 350);
 
     // Sidebar
     GtkWidget *sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
@@ -400,23 +563,17 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     gtk_box_append(GTK_BOX(sidebar), gtk_label_new("Algorithme :"));
     const char *algos[] = {
-        "1. FCFS", 
-        "2. Round Robin",
-        "3. SJF (Non-Preemptif)", 
-        "4. Preemptive Priority", 
-        "5. Multilevel Static", 
-        "6. Multilevel Aging", 
-        "7. SRT (Shortest Remaining Time)", 
-        NULL
+        "1. FCFS", "2. Round Robin", "3. SJF (Non-Preemptif)", 
+        "4. Preemptive Priority", "5. Multilevel Static", 
+        "6. Multilevel Aging", "7. SRT", NULL
     };
     GtkWidget *dropdown = gtk_drop_down_new_from_strings(algos);
     g_signal_connect(dropdown, "notify::selected", G_CALLBACK(on_algo_changed), NULL);
     gtk_box_append(GTK_BOX(sidebar), dropdown);
 
-    // Contrôle Quantum
+    // Quantum
     quantum_control_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    GtkWidget *lbl_q = gtk_label_new("Quantum (Round Robin) :");
-    gtk_box_append(GTK_BOX(quantum_control_box), lbl_q);
+    gtk_box_append(GTK_BOX(quantum_control_box), gtk_label_new("Quantum (RR) :"));
     GtkWidget *spin = gtk_spin_button_new_with_range(1, 20, 1);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin), 3);
     g_signal_connect(spin, "value-changed", G_CALLBACK(on_quantum_changed), NULL);
@@ -424,25 +581,24 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_box_append(GTK_BOX(sidebar), quantum_control_box);
     gtk_widget_set_visible(quantum_control_box, FALSE); 
 
-    // Légende
-    gtk_box_append(GTK_BOX(sidebar), gtk_label_new("\n--- Légende ---"));
-    for(int i=0; i<5; i++) {
+    // Légende Dynamique (Basée sur le fichier chargé)
+    gtk_box_append(GTK_BOX(sidebar), gtk_label_new("\n--- Légende Config ---"));
+    for(int i=0; i<total_processes; i++) {
         char buf[100];
-        sprintf(buf, "P%d : Arrivée %d | Durée %d | Prio %d", 
-            initial_processes[i].pid, initial_processes[i].arrival_time, 
+        sprintf(buf, "%s : Arr %d | Dur %d | Prio %d", 
+            initial_processes[i].id, initial_processes[i].arrival_time, 
             initial_processes[i].duration, initial_processes[i].priority);
         GtkWidget *l = gtk_label_new(buf);
         gtk_box_append(GTK_BOX(sidebar), l);
     }
 
-    // Scroll + Drawing Area
+    // Scroll + Drawing
     drawing_area = gtk_drawing_area_new();
     gtk_widget_set_size_request(drawing_area, -1, 400); 
     gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(drawing_area), draw_function, NULL, NULL);
 
     GtkWidget *scrolled_window = gtk_scrolled_window_new();
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window), 
-                                   GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrolled_window), drawing_area);
     gtk_widget_set_hexpand(scrolled_window, TRUE);
     gtk_widget_set_vexpand(scrolled_window, TRUE);
@@ -453,7 +609,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
 }
 
 int main(int argc, char **argv) {
-    GtkApplication *app = gtk_application_new("com.projetse.full", G_APPLICATION_DEFAULT_FLAGS);
+    GtkApplication *app = gtk_application_new("com.projetse.final", G_APPLICATION_DEFAULT_FLAGS);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     int status = g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
