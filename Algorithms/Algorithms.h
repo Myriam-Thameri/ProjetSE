@@ -13,7 +13,7 @@ SRT_Scheduler* SRT_create();
 void SRT_add_process(SRT_Scheduler *s, PROCESS *p);
 
 PROCESS* SRT_next(SRT_Scheduler *s);
-
+PCB* find_pcb_by_id(PCB* pcb, int count, const char* id);
 
 void SRT_destroy(SRT_Scheduler *s);
 
