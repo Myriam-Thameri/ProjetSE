@@ -5,10 +5,23 @@
 #include <stdlib.h>
 
 
-char* PATH = "./Config/config.txt";
 
-int main(void){
+int main(int argc, char *argv[]){
+
+    if (argc < 2) {
+        printf("Usage: %s <config-file-path>\n", argv[0]);
+        return 1;
+    }
+
+    char *PATH = argv[1];
+
     Config* CFG = malloc(sizeof(Config));
+
+    if(CFG == NULL){
+        printf("Memory allocation failed.\n");
+        return 1;
+    }
+
     int config_load_res;
     config_load_res = load_config(PATH , CFG);
     
@@ -62,8 +75,10 @@ int main(void){
         case 7:
             SRT_Algo(CFG);
             break;
+        default:FCFS_Algo(CFG); break;
 
 }}
     }
+    free(CFG);
     return 0;
 }
