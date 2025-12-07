@@ -30,7 +30,7 @@ int load_config(char* path , Config* cfg) {
     int p_io=-1;
      // line by line till the end
     while(fgets(line, sizeof(line), file)) {
-
+        printf(" %s \n", line);
         trim(line);
         if (line[0] == '#' || strlen(line) ==0 ) {
             continue;
@@ -67,6 +67,7 @@ int load_config(char* path , Config* cfg) {
             //config   att
             if (strcmp(key, "process_count") == 0) { // key=process_count
                 cfg ->process_count = atoi(value);
+                printf("process count : %d\n", cfg ->process_count);
                 continue;
             }
 

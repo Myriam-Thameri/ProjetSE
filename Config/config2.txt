@@ -1,0 +1,46 @@
+#config file: this is a comment 
+
+process_count = 4
+
+[process0]
+ID = P01
+arrival_time = 0
+execution_time = 10
+priority = 3
+io_count = 2
+
+[process_io]
+start_time = 2
+duration = 3
+
+[process_io]
+start_time = 6
+duration = 5
+
+
+[process1]
+ID = P02
+arrival_time = 2
+execution_time = 6
+priority = 1
+io_count = 1
+
+[process_io]
+start_time = 3
+duration = 4
+
+
+[process2]
+ID = P03
+arrival_time = 3
+execution_time = 6
+priority = 3
+io_count = 0
+
+
+[process3]
+ID = P04
+arrival_time = 5
+execution_time = 4
+priority= 2
+io_count = 0

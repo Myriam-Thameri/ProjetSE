@@ -1,24 +1,64 @@
 CC = gcc
-# Generate dependency files (.d) for header tracking: -MMD -MP
-CFLAGS = -Wall -Wextra -g -MMD -MP
 
-SRC = main.c Config/config.c Algorithms/SJF.c Algorithms/RoundRobin.c Algorithms/srt.c Algorithms/MultilevelStatic.c Algorithms/fcfs.c Algorithms/multilevel_aging.c Algorithms/PreemptivePriority.c Algorithms/Algorithms.c
+# Project Name
+TARGET = program
+
+# Generate dependency files (.d) for header tracking: -MMD -MP
+# CFLAGS includes the GTK Header paths and warning flags
+CFLAGS = -Wall -Wextra -g -MMD -MP $(shell pkg-config --cflags gtk4)
+
+# LDFLAGS includes the GTK Library files
+LDFLAGS = $(shell pkg-config --libs gtk4)
+
+# Source files - removed duplicates (using Interface and Utils with capital letters)
+SRC = main.c \
+	Config/config.c \
+	Algorithms/SJF.c \
+	Algorithms/RoundRobin.c \
+	Algorithms/srt.c \
+	Algorithms/MultilevelStatic.c \
+	Algorithms/fcfs.c \
+	Algorithms/multilevel_aging.c \
+	Algorithms/PreemptivePriority.c \
+	Algorithms/Algorithms.c \
+	Interface/interface_utils.c \
+	Utils/utils.c
+
 OBJ = $(SRC:.c=.o)
 DEPS = $(SRC:.c=.d)
 
+# Main build target
 program: $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ) -o program
+	@echo "Linking $(TARGET)..."
+	$(CC) $(CFLAGS) $(OBJ) -o $(TARGET) $(LDFLAGS)
+	@echo "Build complete! Run with: make run"
 
-# Include generated dependency files (ignore missing ones on first run)
+# Include generated dependency files
 -include $(DEPS)
 
+# Compilation rule
 %.o: %.c
+	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) -c $< -o $@
 
-.PHONY: clean run
+.PHONY: clean run all
+
+all: clean $(TARGET)
 
 clean:
-	rm -f $(OBJ) $(DEPS) program
+	@echo "Cleaning build artifacts..."
+	rm -f $(OBJ) $(DEPS) $(TARGET)
+	@echo "Clean complete!"
 
-run: program
-	./program
+run: $(TARGET)
+	@echo "Running $(TARGET)..."
+	./$(TARGET)
+
+# Optional: Print variables for debugging
+debug:
+	@echo "CC: $(CC)"
+	@echo "CFLAGS: $(CFLAGS)"
+	@echo "LDFLAGS: $(LDFLAGS)"
+	@echo "SRC: $(SRC)"
+	@echo "OBJ: $(OBJ)"
+	@echo "DEPS: $(DEPS)"
