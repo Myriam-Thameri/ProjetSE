@@ -496,7 +496,7 @@ static void on_algo_changed(GObject *object, GParamSpec *pspec, gpointer data) {
     if (drawing_area) gtk_widget_queue_draw(drawing_area);
 }
 
-// --- BEAUTIFUL CSS ---
+// --- BEAUTIFUL CSS COMPLÈTEMENT CORRIGÉ (Sans !important) ---
 static void load_css() {
     GtkCssProvider *provider = gtk_css_provider_new();
     const char *css = 
@@ -518,18 +518,36 @@ static void load_css() {
         "textview { border-radius: 6px; border: 1px solid #181a1f; }"
         "textview text { background-color: #ffffff; color: #282c34; }"
 
-        // 5. Dropdown & Popover
-        "dropdown { background-color: #ffffff; color: #282c34; border-radius: 6px; padding: 5px; border: 1px solid #abb2bf; }"
-        "dropdown label { color: #282c34; }" 
-        "dropdown arrow { color: #282c34; }"
-        "popover { background-color: #ffffff; color: #282c34; border-radius: 6px; border: 1px solid #abb2bf; }"
-        "popover listview { background-color: #ffffff; color: #282c34; }"
-        "popover listview row { padding: 8px; }"
-        "popover listview row:selected { background-color: #61afef; color: #ffffff; }"
-        "popover listview row:selected label { color: #ffffff; }"; 
+        // 5. Dropdown - LE BOUTON PRINCIPAL
+        "dropdown { background-color: #ffffff; color: #282c34; border-radius: 6px; border: 1px solid #abb2bf; }"
+        "dropdown button { background-color: #ffffff; color: #282c34; border: none; }"
+        "dropdown button label { color: #282c34; }" 
+        "dropdown label { color: #282c34; }"
+        
+        // 6. Popover (menu déroulant)
+        "popover.menu { background-color: #ffffff; border-radius: 6px; border: 1px solid #abb2bf; padding: 4px; }"
+        "popover.menu contents { background-color: #ffffff; }"
+        
+        // Style des items dans la liste
+        "popover.menu listview { background-color: #ffffff; }"
+        "popover.menu listview row { padding: 8px 12px; background-color: #ffffff; }"
+        "popover.menu listview row label { color: #282c34; font-size: 13px; }"
+        
+        // Style au survol
+        "popover.menu listview row:hover { background-color: #e8f4fd; }"
+        "popover.menu listview row:hover label { color: #282c34; }"
+        
+        // Style de l'item sélectionné
+        "popover.menu listview row:selected { background-color: #61afef; }"
+        "popover.menu listview row:selected label { color: #ffffff; font-weight: bold; }"
+        "popover.menu listview row:selected:hover { background-color: #528bff; }"
+        
+        // Style du checkmark
+        "popover.menu listview row image { color: #282c34; }"
+        "popover.menu listview row:selected image { color: #ffffff; }";
     
     gtk_css_provider_load_from_string(provider, css);
-    gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(provider), 800);
+    gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
     g_object_unref(provider);
 }
 
