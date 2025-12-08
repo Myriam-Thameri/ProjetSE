@@ -509,10 +509,10 @@ static void load_css() {
         ".sidebar label { color: #dcdfe4; font-weight: bold; margin-bottom: 5px; }"
 
         // 3. Modern Flat Blue Buttons
-        ".accent-button { background-color: #61afef; color: #ffffff; border-radius: 6px; padding: 8px 12px; border: none; transition: all 0.2s; }"
-        ".accent-button label { color: #ffffff; font-weight: bold; }"
-        ".accent-button:hover { background-color: #528bff; }"
-        ".accent-button:active { background-color: #3d6dc2; transform: translateY(1px); }"
+        ".accent-button { background: linear-gradient(135deg, #61afef 0%, #528bff 100%); color: #ffffff; border-radius: 8px; padding: 10px 16px; border: none; box-shadow: 0 2px 8px rgba(97, 175, 239, 0.3); transition: all 0.3s ease; }"
+        ".accent-button label { color: #ffffff; font-weight: 600; font-size: 14px; }"
+        ".accent-button:hover { background: linear-gradient(135deg, #528bff 0%, #4a7fd6 100%); box-shadow: 0 4px 12px rgba(97, 175, 239, 0.5); transform: translateY(-2px); }"
+        ".accent-button:active { background: linear-gradient(135deg, #3d6dc2 0%, #2d5ba8 100%); transform: translateY(0px); box-shadow: 0 2px 6px rgba(97, 175, 239, 0.3); }"
 
         // 4. Text Input Area
         "textview { border-radius: 6px; border: 1px solid #181a1f; }"
@@ -547,10 +547,11 @@ static void load_css() {
         "popover.menu listview row:selected image { color: #ffffff; }";
     
     gtk_css_provider_load_from_string(provider, css);
-    gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+    gtk_style_context_add_provider_for_display(gdk_display_get_default(), 
+                                                GTK_STYLE_PROVIDER(provider), 
+                                                GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     g_object_unref(provider);
 }
-
 static void activate(GtkApplication *app, gpointer user_data) {
     load_css();
     main_window = gtk_application_window_new(app);
