@@ -28,7 +28,7 @@ void SRT_Algo(Config* config);
 
 void MultilevelAgingScheduler(Config* config, int quantum, int aging_interval, int max_priority);
 
-void run_priority_preemptive(PROCESS p[], int count);
+void run_priority_preemptive(Config* config);
 
 void SJF_Algo(Config* config);
 

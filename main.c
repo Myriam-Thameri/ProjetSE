@@ -65,7 +65,7 @@ int main(int argc, char *argv[]){
             FCFS_Algo(CFG);
             break;
         case 2:
-            run_priority_preemptive(CFG->processes, CFG->process_count);
+            run_priority_preemptive(CFG);
             break;
         case 3:
             RoundRobin_Algo(CFG);
