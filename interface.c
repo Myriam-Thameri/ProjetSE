@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <limits.h>
+#include <math.h>
 
 // Suppress deprecation warnings
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -74,8 +75,28 @@ void trim(char* s) {
     while(end > s && isspace((unsigned char)*end)) *end-- = '\0';
 }
 
+// Fonction pour dessiner le carré de couleur dans la légende
+static void draw_color_square(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data) {
+    const char *color = (const char*)data;
+    GdkRGBA rgba;
+    gdk_rgba_parse(&rgba, color);
+    cairo_set_source_rgb(cr, rgba.red, rgba.green, rgba.blue);
+    
+    // Rectangle avec coins arrondis
+    double x = 0, y = 0, width = 20, height = 20, radius = 4;
+    cairo_move_to(cr, x + radius, y);
+    cairo_line_to(cr, x + width - radius, y);
+    cairo_arc(cr, x + width - radius, y + radius, radius, -M_PI/2, 0);
+    cairo_line_to(cr, x + width, y + height - radius);
+    cairo_arc(cr, x + width - radius, y + height - radius, radius, 0, M_PI/2);
+    cairo_line_to(cr, x + radius, y + height);
+    cairo_arc(cr, x + radius, y + height - radius, radius, M_PI/2, M_PI);
+    cairo_line_to(cr, x, y + radius);
+    cairo_arc(cr, x + radius, y + radius, radius, M_PI, 3*M_PI/2);
+    cairo_fill(cr);
+}
+
 void update_interface_after_load() {
-    // Clear legend
     GtkWidget *child = gtk_widget_get_first_child(legend_box);
     while (child != NULL) {
         GtkWidget *next = gtk_widget_get_next_sibling(child);
@@ -83,22 +104,40 @@ void update_interface_after_load() {
         child = next;
     }
 
-    // Rebuild legend
     if (total_processes == 0) {
-        gtk_box_append(GTK_BOX(legend_box), gtk_label_new("(No process loaded)"));
+        GtkWidget *empty_label = gtk_label_new("⚠️ No config loaded");
+        gtk_widget_set_opacity(empty_label, 0.6);
+        gtk_box_append(GTK_BOX(legend_box), empty_label);
     } else {
         for(int i=0; i<total_processes; i++) {
+            // Créer une box horizontale pour chaque processus
+            GtkWidget *process_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+            gtk_widget_add_css_class(process_box, "legend-item");
+            
+            // Carré de couleur
+            GtkWidget *color_box = gtk_drawing_area_new();
+            gtk_widget_set_size_request(color_box, 20, 20);
+            gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(color_box), 
+                draw_color_square,
+                (gpointer)initial_processes[i].color, 
+                NULL);
+            
+            gtk_box_append(GTK_BOX(process_box), color_box);
+            
+            // Texte du processus
             char buf[100];
-            sprintf(buf, "%s : Arr %d | Bur %d | Prio %d", 
+            sprintf(buf, "<b>%s</b> · Arr: %d | Dur: %d | Prio: %d", 
                 initial_processes[i].id, initial_processes[i].arrival_time, 
                 initial_processes[i].duration, initial_processes[i].priority);
-            GtkWidget *l = gtk_label_new(buf);
+            GtkWidget *l = gtk_label_new(NULL);
+            gtk_label_set_markup(GTK_LABEL(l), buf);
             gtk_widget_set_halign(l, GTK_ALIGN_START);
-            gtk_box_append(GTK_BOX(legend_box), l);
+            gtk_box_append(GTK_BOX(process_box), l);
+            
+            gtk_box_append(GTK_BOX(legend_box), process_box);
         }
     }
 
-    // Refresh Drawing
     if (drawing_area) gtk_widget_queue_draw(drawing_area);
 }
 
@@ -435,52 +474,134 @@ static void draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int heig
             max_end = slices[i].start + slices[i].duration;
     max_end += 2;
 
-    double start_x = 20;
-    double scale = 25.0; 
-    double axis_y = height - 50;
-    int needed_width = start_x + (max_end * scale) + 50;
-    if (needed_width > width) gtk_drawing_area_set_content_width(area, needed_width);
+    double start_x = 40;
+    double scale = 35.0;
+    double axis_y = height / 2 + 80;
+    
+    // ⚠️ FORCEZ UNE GRANDE LARGEUR pour que le scroll apparaisse
+    int needed_width = start_x + (max_end * scale) + 100;
+    if (needed_width < 1500) needed_width = 1500;  // Changé de 800 à 1500
+    
+    gtk_drawing_area_set_content_width(area, needed_width);
+    gtk_drawing_area_set_content_height(area, 600);  // Hauteur fixe aussi
 
-    cairo_set_source_rgb(cr, 0.18, 0.20, 0.23); cairo_paint(cr);
-    cairo_set_line_width(cr, 1);
-    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_size(cr, 11);
+    // Fond dégradé
+    cairo_pattern_t *gradient = cairo_pattern_create_linear(0, 0, 0, height);
+    cairo_pattern_add_color_stop_rgb(gradient, 0, 0.16, 0.18, 0.20);
+    cairo_pattern_add_color_stop_rgb(gradient, 1, 0.18, 0.20, 0.23);
+    cairo_set_source(cr, gradient);
+    cairo_paint(cr);
+    cairo_pattern_destroy(gradient);
 
+    cairo_set_line_width(cr, 1.5);
+    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, 12);
+
+    // Titre du diagramme
+    cairo_set_source_rgb(cr, 1, 1, 1);
+    cairo_set_font_size(cr, 16);
+    cairo_move_to(cr, start_x, 40);
+    cairo_show_text(cr, "Gantt Chart - Process Scheduling");
+    cairo_set_font_size(cr, 12);
+
+    // Grille verticale avec style amélioré
     for (int t = 0; t <= max_end; t++) {
         double x = start_x + (t * scale);
-        cairo_set_source_rgba(cr, 1, 1, 1, 0.3); cairo_move_to(cr, x, 30); cairo_line_to(cr, x, axis_y); cairo_stroke(cr);
+        cairo_set_source_rgba(cr, 1, 1, 1, 0.2);
+        cairo_set_line_width(cr, 1);
+        cairo_move_to(cr, x, 80);
+        cairo_line_to(cr, x, axis_y);
+        cairo_stroke(cr);
+        
+        // Numéros avec ombre
+        cairo_set_source_rgba(cr, 0, 0, 0, 0.4);
+        char num[20];
+        sprintf(num, "%d", t);
+        cairo_move_to(cr, x - 5, axis_y + 25);
+        cairo_show_text(cr, num);
+        
         cairo_set_source_rgb(cr, 1, 1, 1);
-        char num[20]; sprintf(num, "%d", t); cairo_move_to(cr, x - 4, axis_y + 15); cairo_show_text(cr, num);
+        cairo_move_to(cr, x - 6, axis_y + 23);
+        cairo_show_text(cr, num);
     }
-    cairo_set_source_rgb(cr, 1, 1, 1); cairo_set_line_width(cr, 2);
-    cairo_move_to(cr, start_x, axis_y); cairo_line_to(cr, start_x + (max_end * scale), axis_y); cairo_stroke(cr);
 
+    // Axe principal avec style
+    cairo_set_source_rgba(cr, 1, 1, 1, 0.9);
+    cairo_set_line_width(cr, 3);
+    cairo_move_to(cr, start_x, axis_y);
+    cairo_line_to(cr, start_x + (max_end * scale), axis_y);
+    cairo_stroke(cr);
+
+    // Blocs Gantt avec ombres et coins arrondis - PLUS GRANDS
     for (int i = 0; i < slice_count; i++) {
         GanttSlice s = slices[i];
         double x = start_x + (s.start * scale);
         double w = s.duration * scale;
-        double y = axis_y - 60;
-        double h = 40;
-        GdkRGBA color; gdk_rgba_parse(&color, s.color);
-        cairo_set_source_rgba(cr, color.red, color.green, color.blue, 1.0);
-        // Rounded corners for Gantt blocks
-        double r = 5.0; 
-        cairo_move_to(cr, x + r, y);
-        cairo_line_to(cr, x + w - r, y);
-        cairo_curve_to(cr, x + w, y, x + w, y, x + w, y + r);
-        cairo_line_to(cr, x + w, y + h - r);
-        cairo_curve_to(cr, x + w, y + h, x + w, y + h, x + w - r, y + h);
-        cairo_line_to(cr, x + r, y + h);
-        cairo_curve_to(cr, x, y + h, x, y + h, x, y + h - r);
-        cairo_line_to(cr, x, y + r);
-        cairo_curve_to(cr, x, y, x, y, x + r, y);
+        double y = axis_y - 100;  // Plus haut
+        double h = 70;  // Plus grand
+        double radius = 10;
+        
+        GdkRGBA color;
+        gdk_rgba_parse(&color, s.color);
+        
+        // Ombre portée
+        cairo_set_source_rgba(cr, 0, 0, 0, 0.4);
+        cairo_move_to(cr, x + radius, y + 4);
+        cairo_line_to(cr, x + w - radius, y + 4);
+        cairo_arc(cr, x + w - radius, y + radius + 4, radius, -M_PI/2, 0);
+        cairo_line_to(cr, x + w, y + h - radius + 4);
+        cairo_arc(cr, x + w - radius, y + h - radius + 4, radius, 0, M_PI/2);
+        cairo_line_to(cr, x + radius, y + h + 4);
+        cairo_arc(cr, x + radius, y + h - radius + 4, radius, M_PI/2, M_PI);
+        cairo_line_to(cr, x, y + radius + 4);
+        cairo_arc(cr, x + radius, y + radius + 4, radius, M_PI, 3*M_PI/2);
+        cairo_fill(cr);
+        
+        // Bloc principal avec dégradé
+        cairo_pattern_t *block_gradient = cairo_pattern_create_linear(x, y, x, y + h);
+        cairo_pattern_add_color_stop_rgba(block_gradient, 0, color.red, color.green, color.blue, 1.0);
+        cairo_pattern_add_color_stop_rgba(block_gradient, 1, color.red * 0.7, color.green * 0.7, color.blue * 0.7, 1.0);
+        cairo_set_source(cr, block_gradient);
+        
+        cairo_move_to(cr, x + radius, y);
+        cairo_line_to(cr, x + w - radius, y);
+        cairo_arc(cr, x + w - radius, y + radius, radius, -M_PI/2, 0);
+        cairo_line_to(cr, x + w, y + h - radius);
+        cairo_arc(cr, x + w - radius, y + h - radius, radius, 0, M_PI/2);
+        cairo_line_to(cr, x + radius, y + h);
+        cairo_arc(cr, x + radius, y + h - radius, radius, M_PI/2, M_PI);
+        cairo_line_to(cr, x, y + radius);
+        cairo_arc(cr, x + radius, y + radius, radius, M_PI, 3*M_PI/2);
         cairo_fill_preserve(cr);
-        cairo_set_source_rgb(cr, 1, 1, 1); cairo_set_line_width(cr, 1); cairo_stroke(cr);
+        cairo_pattern_destroy(block_gradient);
+        
+        // Bordure brillante
+        cairo_set_source_rgba(cr, 1, 1, 1, 0.4);
+        cairo_set_line_width(cr, 2.5);
+        cairo_stroke(cr);
+        
+        // Texte avec ombre - PLUS GRAND
         if (w > 20) {
-            cairo_set_source_rgb(cr, 0, 0, 0); char buf[20]; sprintf(buf, "%s", s.pid);
-            cairo_move_to(cr, x + 5, y + 25); cairo_show_text(cr, buf);
+            char buf[20];
+            sprintf(buf, "%s", s.pid);
+            
+            cairo_set_font_size(cr, 14);
+            cairo_set_source_rgba(cr, 0, 0, 0, 0.6);
+            cairo_move_to(cr, x + w/2 - 12, y + h/2 + 7);
+            cairo_show_text(cr, buf);
+            
+            cairo_set_source_rgb(cr, 1, 1, 1);
+            cairo_move_to(cr, x + w/2 - 13, y + h/2 + 6);
+            cairo_show_text(cr, buf);
+            cairo_set_font_size(cr, 12);
         }
     }
+    
+    // Légende "Time" en bas
+    cairo_set_source_rgb(cr, 1, 1, 1);
+    cairo_set_font_size(cr, 13);
+    cairo_move_to(cr, start_x + (max_end * scale) / 2 - 20, axis_y + 50);
+
 }
 
 static void on_quantum_changed(GtkSpinButton *spin, gpointer data) {
@@ -496,12 +617,12 @@ static void on_algo_changed(GObject *object, GParamSpec *pspec, gpointer data) {
     if (drawing_area) gtk_widget_queue_draw(drawing_area);
 }
 
-// --- BEAUTIFUL CSS COMPLÈTEMENT CORRIGÉ (Sans !important) ---
+// --- CSS AMÉLIORÉ COMPLET ---
 static void load_css() {
     GtkCssProvider *provider = gtk_css_provider_new();
     const char *css = 
         // 1. Window & General
-        "window { background-color: #282c34; color: #abb2bf; font-family: Sans; font-size: 14px; }"
+        "window { background-color: #282c34; color: #abb2bf; font-family: 'Segoe UI', Sans; font-size: 14px; }"
         "label { color: #dcdfe4; }" 
         
         // 2. Sidebar styling
@@ -515,36 +636,47 @@ static void load_css() {
         ".accent-button:active { background: linear-gradient(135deg, #3d6dc2 0%, #2d5ba8 100%); transform: translateY(0px); box-shadow: 0 2px 6px rgba(97, 175, 239, 0.3); }"
 
         // 4. Text Input Area
-        "textview { border-radius: 6px; border: 1px solid #181a1f; }"
-        "textview text { background-color: #ffffff; color: #282c34; }"
+        "textview { border-radius: 8px; border: 2px solid #3d4148; background-color: #ffffff; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }"
+        "textview text { background-color: #ffffff; color: #282c34; padding: 8px; }"
+        "textview:focus { border-color: #61afef; }"
 
-        // 5. Dropdown - LE BOUTON PRINCIPAL
-        "dropdown { background-color: #ffffff; color: #282c34; border-radius: 6px; border: 1px solid #abb2bf; }"
-        "dropdown button { background-color: #ffffff; color: #282c34; border: none; }"
-        "dropdown button label { color: #282c34; }" 
+        // 5. Dropdown
+        "dropdown { background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%); color: #282c34; border-radius: 8px; border: 2px solid #d1d5db; padding: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }"
+        "dropdown button { background-color: transparent; color: #282c34; border: none; padding: 8px 12px; }"
+        "dropdown button label { color: #282c34; font-weight: 500; }" 
         "dropdown label { color: #282c34; }"
+        "dropdown:hover { border-color: #61afef; box-shadow: 0 2px 8px rgba(97, 175, 239, 0.2); }"
         
-        // 6. Popover (menu déroulant)
-        "popover.menu { background-color: #ffffff; border-radius: 6px; border: 1px solid #abb2bf; padding: 4px; }"
+        // 6. Popover
+        "popover.menu { background-color: #ffffff; border-radius: 8px; border: 1px solid #d1d5db; padding: 6px; box-shadow: 0 8px 16px rgba(0,0,0,0.15); }"
         "popover.menu contents { background-color: #ffffff; }"
-        
-        // Style des items dans la liste
         "popover.menu listview { background-color: #ffffff; }"
-        "popover.menu listview row { padding: 8px 12px; background-color: #ffffff; }"
+        "popover.menu listview row { padding: 10px 14px; background-color: #ffffff; border-radius: 6px; margin: 2px; }"
         "popover.menu listview row label { color: #282c34; font-size: 13px; }"
-        
-        // Style au survol
         "popover.menu listview row:hover { background-color: #e8f4fd; }"
-        "popover.menu listview row:hover label { color: #282c34; }"
-        
-        // Style de l'item sélectionné
-        "popover.menu listview row:selected { background-color: #61afef; }"
-        "popover.menu listview row:selected label { color: #ffffff; font-weight: bold; }"
-        "popover.menu listview row:selected:hover { background-color: #528bff; }"
-        
-        // Style du checkmark
+        "popover.menu listview row:hover label { color: #1e3a5f; }"
+        "popover.menu listview row:selected { background: linear-gradient(135deg, #61afef 0%, #528bff 100%); box-shadow: 0 2px 4px rgba(97, 175, 239, 0.3); }"
+        "popover.menu listview row:selected label { color: #ffffff; font-weight: 600; }"
+        "popover.menu listview row:selected:hover { background: linear-gradient(135deg, #528bff 0%, #4a7fd6 100%); }"
         "popover.menu listview row image { color: #282c34; }"
-        "popover.menu listview row:selected image { color: #ffffff; }";
+        "popover.menu listview row:selected image { color: #ffffff; }"
+        
+        // 7. SpinButton
+        "spinbutton { background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%); border-radius: 8px; border: 2px solid #d1d5db; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }"
+        "spinbutton:focus-within { border-color: #61afef; box-shadow: 0 0 0 3px rgba(97, 175, 239, 0.1); }"
+        "spinbutton entry { background-color: transparent; color: #282c34; border: none; font-weight: 600; }"
+        "spinbutton button { background-color: transparent; border: none; color: #61afef; }"
+        "spinbutton button:hover { background-color: rgba(97, 175, 239, 0.1); }"
+        
+        // 8. Separator
+        "separator { background-color: #3d4148; min-height: 2px; margin-top: 8px; margin-bottom: 8px; opacity: 0.3; }"
+        
+        // 9. Legend Items
+        ".legend-item { color: #dcdfe4; padding: 6px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.05); margin: 3px 0; }"
+        ".legend-item:hover { background-color: rgba(97, 175, 239, 0.1); }"
+        
+        // 10. ScrolledWindow
+        "scrolledwindow { border-radius: 8px; }";
     
     gtk_css_provider_load_from_string(provider, css);
     gtk_style_context_add_provider_for_display(gdk_display_get_default(), 
@@ -552,35 +684,42 @@ static void load_css() {
                                                 GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     g_object_unref(provider);
 }
+
 static void activate(GtkApplication *app, gpointer user_data) {
     load_css();
     main_window = gtk_application_window_new(app);
-    gtk_window_set_title(GTK_WINDOW(main_window), "Scheduler Simulator Pro");
-    gtk_window_set_default_size(GTK_WINDOW(main_window), 1200, 800);
+    gtk_window_set_title(GTK_WINDOW(main_window), "Scheduler Simulator");
+    gtk_window_set_default_size(GTK_WINDOW(main_window), 1200, 750);
 
     GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_window_set_child(GTK_WINDOW(main_window), paned);
     gtk_paned_set_position(GTK_PANED(paned), 380);
 
     // Sidebar
-    GtkWidget *sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 15);
-    gtk_widget_add_css_class(sidebar, "sidebar"); 
+    GtkWidget *sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
+    gtk_widget_set_margin_start(sidebar, 12);
+    gtk_widget_set_margin_end(sidebar, 12);
+    gtk_widget_set_margin_top(sidebar, 12);
+    gtk_widget_set_margin_bottom(sidebar, 12);
+    gtk_widget_add_css_class(sidebar, "sidebar");
     gtk_paned_set_start_child(GTK_PANED(paned), sidebar);
 
     // Header
-    gtk_box_append(GTK_BOX(sidebar), gtk_label_new("1. CONFIGURATION"));
+    GtkWidget *header = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(header), "<span size='large' weight='bold'>⚙️ CONFIGURATION</span>");
+    gtk_box_append(GTK_BOX(sidebar), header);
 
-    // File Selection
-    GtkWidget *btn_open = gtk_button_new_with_label("📂 Select Config File...");
+    // File Button
+    GtkWidget *btn_open = gtk_button_new_with_label("📂 Select Config File");
     gtk_widget_add_css_class(btn_open, "accent-button");
     g_signal_connect(btn_open, "clicked", G_CALLBACK(on_open_config_clicked), NULL);
     gtk_box_append(GTK_BOX(sidebar), btn_open);
 
-    gtk_box_append(GTK_BOX(sidebar), gtk_label_new("OR Paste Config Below:"));
+    gtk_box_append(GTK_BOX(sidebar), gtk_label_new("OR Paste Configuration:"));
     
     // Text Area
     GtkWidget *scrolled_text = gtk_scrolled_window_new();
-    gtk_widget_set_size_request(scrolled_text, -1, 150);
+    gtk_widget_set_size_request(scrolled_text, -1, 140);
     config_text_view = gtk_text_view_new();
     gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(config_text_view), GTK_WRAP_WORD);
     gtk_text_view_set_top_margin(GTK_TEXT_VIEW(config_text_view), 8);
@@ -588,55 +727,80 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrolled_text), config_text_view);
     gtk_box_append(GTK_BOX(sidebar), scrolled_text);
 
-    // Load Text Button
-    GtkWidget *btn_load_text = gtk_button_new_with_label("⬇ Load from Text");
+    // Load Button
+    GtkWidget *btn_load_text = gtk_button_new_with_label("⬇️ Load from Text");
     gtk_widget_add_css_class(btn_load_text, "accent-button");
     g_signal_connect(btn_load_text, "clicked", G_CALLBACK(on_load_text_clicked), NULL);
     gtk_box_append(GTK_BOX(sidebar), btn_load_text);
 
     // Separator
-    GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_widget_set_margin_top(sep, 10);
-    gtk_widget_set_margin_bottom(sep, 10);
-    gtk_box_append(GTK_BOX(sidebar), sep);
+    gtk_box_append(GTK_BOX(sidebar), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
 
-    // Algo Selection
-    gtk_box_append(GTK_BOX(sidebar), gtk_label_new("2. ALGORITHM"));
-    const char *algos[] = {"1. FCFS (First Come First Served)", "2. Round Robin", "3. SJF (Shortest Job First)", 
-                           "4. Preemptive Priority", "5. Multilevel Static", "6. Multilevel Aging", "7. SRT", NULL};
+    // Algorithm Section
+    GtkWidget *algo_header = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(algo_header), "<span size='large' weight='bold'>ALGORITHM</span>");
+    gtk_box_append(GTK_BOX(sidebar), algo_header);
+    
+    const char *algos[] = {
+        "1️⃣ FCFS (First Come First Served)", 
+        "2️⃣ Round Robin", 
+        "3️⃣ SJF (Shortest Job First)", 
+        "4️⃣ Preemptive Priority", 
+        "5️⃣ Multilevel Static", 
+        "6️⃣ Multilevel Aging", 
+        "7️⃣ SRT (Shortest Remaining Time)", 
+        NULL
+    };
     GtkWidget *dropdown = gtk_drop_down_new_from_strings(algos);
     g_signal_connect(dropdown, "notify::selected", G_CALLBACK(on_algo_changed), NULL);
     gtk_box_append(GTK_BOX(sidebar), dropdown);
 
-    // Quantum Box
-    quantum_control_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    gtk_widget_set_margin_top(quantum_control_box, 10);
-    gtk_box_append(GTK_BOX(quantum_control_box), gtk_label_new("Quantum (Time Slice):"));
+    // Quantum Control
+    quantum_control_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    gtk_widget_set_margin_top(quantum_control_box, 8);
+    GtkWidget *quantum_label = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(quantum_label), "<b>⏱️ Time Quantum:</b>");
+    gtk_widget_set_halign(quantum_label, GTK_ALIGN_START);
+    gtk_box_append(GTK_BOX(quantum_control_box), quantum_label);
+    
     GtkWidget *spin = gtk_spin_button_new_with_range(1, 20, 1);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin), 3);
     g_signal_connect(spin, "value-changed", G_CALLBACK(on_quantum_changed), NULL);
     gtk_box_append(GTK_BOX(quantum_control_box), spin);
     gtk_box_append(GTK_BOX(sidebar), quantum_control_box);
-    gtk_widget_set_visible(quantum_control_box, FALSE); 
+    gtk_widget_set_visible(quantum_control_box, FALSE);
 
-    // Legend
-    GtkWidget *sep2 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_widget_set_margin_top(sep2, 10);
-    gtk_box_append(GTK_BOX(sidebar), sep2);
-    gtk_box_append(GTK_BOX(sidebar), gtk_label_new("PROCESS LEGEND"));
+    // Legend Section
+    gtk_box_append(GTK_BOX(sidebar), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
+    GtkWidget *legend_header = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(legend_header), "<span size='large' weight='bold'>📊 PROCESS LEGEND</span>");
+    gtk_box_append(GTK_BOX(sidebar), legend_header);
     
-    legend_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    gtk_box_append(GTK_BOX(sidebar), legend_box);
-    GtkWidget *empty_lbl = gtk_label_new("No config loaded.");
-    gtk_widget_set_opacity(empty_lbl, 0.5);
+    GtkWidget *legend_scrolled = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(legend_scrolled),
+                                   GTK_POLICY_NEVER,
+                                   GTK_POLICY_AUTOMATIC);
+    gtk_widget_set_size_request(legend_scrolled, -1, 200);
+    gtk_widget_set_vexpand(legend_scrolled, TRUE);
+    
+    legend_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(legend_scrolled), legend_box);
+    gtk_box_append(GTK_BOX(sidebar), legend_scrolled);
+    
+    GtkWidget *empty_lbl = gtk_label_new("⚠️ No configuration loaded");
+    gtk_widget_set_opacity(empty_lbl, 0.6);
     gtk_box_append(GTK_BOX(legend_box), empty_lbl);
 
-    // Draw Area
+    // Drawing Area avec scrollbars
     drawing_area = gtk_drawing_area_new();
-    gtk_widget_set_size_request(drawing_area, -1, 500); 
+    gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(drawing_area), 1500);
+    gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(drawing_area), 600);
     gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(drawing_area), draw_function, NULL, NULL);
 
     GtkWidget *scrolled_window = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window), 
+                                   GTK_POLICY_ALWAYS,    // Force ALWAYS au lieu de AUTOMATIC
+                                   GTK_POLICY_ALWAYS);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrolled_window), drawing_area);
     gtk_widget_set_hexpand(scrolled_window, TRUE);
     gtk_widget_set_vexpand(scrolled_window, TRUE);
@@ -644,7 +808,6 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     gtk_window_present(GTK_WINDOW(main_window));
 }
-
 int main(int argc, char **argv) {
     GtkApplication *app = gtk_application_new("com.projetse.final", G_APPLICATION_DEFAULT_FLAGS);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
