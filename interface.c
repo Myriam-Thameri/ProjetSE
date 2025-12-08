@@ -105,7 +105,7 @@ void update_interface_after_load() {
     }
 
     if (total_processes == 0) {
-        GtkWidget *empty_label = gtk_label_new("⚠️ No config loaded");
+        GtkWidget *empty_label = gtk_label_new(" No config loaded");
         gtk_widget_set_opacity(empty_label, 0.6);
         gtk_box_append(GTK_BOX(legend_box), empty_label);
     } else {
@@ -478,7 +478,6 @@ static void draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int heig
     double scale = 35.0;
     double axis_y = height / 2 + 80;
     
-    // ⚠️ FORCEZ UNE GRANDE LARGEUR pour que le scroll apparaisse
     int needed_width = start_x + (max_end * scale) + 100;
     if (needed_width < 1500) needed_width = 1500;  // Changé de 800 à 1500
     
@@ -706,11 +705,11 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     // Header
     GtkWidget *header = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(header), "<span size='large' weight='bold'>⚙️ CONFIGURATION</span>");
+    gtk_label_set_markup(GTK_LABEL(header), "<span size='large' weight='bold'> CONFIGURATION</span>");
     gtk_box_append(GTK_BOX(sidebar), header);
 
     // File Button
-    GtkWidget *btn_open = gtk_button_new_with_label("📂 Select Config File");
+    GtkWidget *btn_open = gtk_button_new_with_label(" Select Config File");
     gtk_widget_add_css_class(btn_open, "accent-button");
     g_signal_connect(btn_open, "clicked", G_CALLBACK(on_open_config_clicked), NULL);
     gtk_box_append(GTK_BOX(sidebar), btn_open);
@@ -728,7 +727,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_box_append(GTK_BOX(sidebar), scrolled_text);
 
     // Load Button
-    GtkWidget *btn_load_text = gtk_button_new_with_label("⬇️ Load from Text");
+    GtkWidget *btn_load_text = gtk_button_new_with_label("Load from Text");
     gtk_widget_add_css_class(btn_load_text, "accent-button");
     g_signal_connect(btn_load_text, "clicked", G_CALLBACK(on_load_text_clicked), NULL);
     gtk_box_append(GTK_BOX(sidebar), btn_load_text);
@@ -742,13 +741,13 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_box_append(GTK_BOX(sidebar), algo_header);
     
     const char *algos[] = {
-        "1️⃣ FCFS (First Come First Served)", 
-        "2️⃣ Round Robin", 
-        "3️⃣ SJF (Shortest Job First)", 
-        "4️⃣ Preemptive Priority", 
-        "5️⃣ Multilevel Static", 
-        "6️⃣ Multilevel Aging", 
-        "7️⃣ SRT (Shortest Remaining Time)", 
+        "FCFS (First Come First Served)", 
+        "Round Robin", 
+        "SJF (Shortest Job First)", 
+        "Preemptive Priority", 
+        "Multilevel Static", 
+        "Multilevel Aging", 
+        "SRT (Shortest Remaining Time)", 
         NULL
     };
     GtkWidget *dropdown = gtk_drop_down_new_from_strings(algos);
@@ -759,7 +758,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
     quantum_control_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
     gtk_widget_set_margin_top(quantum_control_box, 8);
     GtkWidget *quantum_label = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(quantum_label), "<b>⏱️ Time Quantum:</b>");
+    gtk_label_set_markup(GTK_LABEL(quantum_label), "<b> Time Quantum:</b>");
     gtk_widget_set_halign(quantum_label, GTK_ALIGN_START);
     gtk_box_append(GTK_BOX(quantum_control_box), quantum_label);
     
@@ -773,7 +772,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
     // Legend Section
     gtk_box_append(GTK_BOX(sidebar), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
     GtkWidget *legend_header = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(legend_header), "<span size='large' weight='bold'>📊 PROCESS LEGEND</span>");
+    gtk_label_set_markup(GTK_LABEL(legend_header), "<span size='large' weight='bold'>PROCESS LEGEND</span>");
     gtk_box_append(GTK_BOX(sidebar), legend_header);
     
     GtkWidget *legend_scrolled = gtk_scrolled_window_new();
@@ -787,7 +786,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(legend_scrolled), legend_box);
     gtk_box_append(GTK_BOX(sidebar), legend_scrolled);
     
-    GtkWidget *empty_lbl = gtk_label_new("⚠️ No configuration loaded");
+    GtkWidget *empty_lbl = gtk_label_new("No configuration loaded");
     gtk_widget_set_opacity(empty_lbl, 0.6);
     gtk_box_append(GTK_BOX(legend_box), empty_lbl);
 
