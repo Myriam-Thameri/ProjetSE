@@ -11,7 +11,7 @@
 
 typedef struct 
 {
-    int start_time; //After how much time from the beginning of the process
+    int start_time;
     int duration;
 } IO_OPERATION;
 
