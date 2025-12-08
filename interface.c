@@ -126,7 +126,7 @@ void update_interface_after_load() {
             
             // Texte du processus
             char buf[100];
-            sprintf(buf, "<b>%s</b> · Arr: %d | Dur: %d | Prio: %d", 
+            sprintf(buf, "<b>%s</b> · Arr: %d | CPU: %d | Prio: %d", 
                 initial_processes[i].id, initial_processes[i].arrival_time, 
                 initial_processes[i].duration, initial_processes[i].priority);
             GtkWidget *l = gtk_label_new(NULL);
@@ -615,8 +615,7 @@ static void on_algo_changed(GObject *object, GParamSpec *pspec, gpointer data) {
     else gtk_widget_set_visible(quantum_control_box, FALSE);
     if (drawing_area) gtk_widget_queue_draw(drawing_area);
 }
-
-// --- CSS AMÉLIORÉ COMPLET ---
+// --- CSS AMÉLIORÉ COMPLET - FIXED DROPDOWN MENU TEXT (No !important) ---
 static void load_css() {
     GtkCssProvider *provider = gtk_css_provider_new();
     const char *css = 
@@ -635,28 +634,41 @@ static void load_css() {
         ".accent-button:active { background: linear-gradient(135deg, #3d6dc2 0%, #2d5ba8 100%); transform: translateY(0px); box-shadow: 0 2px 6px rgba(97, 175, 239, 0.3); }"
 
         // 4. Text Input Area
-        "textview { border-radius: 8px; border: 2px solid #3d4148; background-color: #ffffff; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }"
+        "textview { border-radius: 8px; border: 2px solid #3d4148; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }"
         "textview text { background-color: #ffffff; color: #282c34; padding: 8px; }"
         "textview:focus { border-color: #61afef; }"
 
-        // 5. Dropdown
-        "dropdown { background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%); color: #282c34; border-radius: 8px; border: 2px solid #d1d5db; padding: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }"
-        "dropdown button { background-color: transparent; color: #282c34; border: none; padding: 8px 12px; }"
-        "dropdown button label { color: #282c34; font-weight: 500; }" 
+        // 5. Dropdown - TEXTE TOUJOURS NOIR
+        "dropdown { color: #282c34; border-radius: 8px; border: 2px solid #d1d5db; padding: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }"
+        "dropdown button { color: #FF0000; border: none; padding: 8px 12px; }"
+        "dropdown button label { color: #282c34;}" 
+        "dropdown button:hover { background-color: rgba(97, 175, 239, 0.05); }"
+        "dropdown button:hover label { color: #282c34; }"
         "dropdown label { color: #282c34; }"
+        "dropdown > button { color: #282c34; }"
+        "dropdown > button:hover { color: #282c34; }"
+        "dropdown > button > box { color: #282c34; }"
+        "dropdown > button > box > label { color: #282c34; }"
+        "dropdown > button:checked { color: #282c34; }"
+        "dropdown > button:checked label { color: #282c34; }"
         "dropdown:hover { border-color: #61afef; box-shadow: 0 2px 8px rgba(97, 175, 239, 0.2); }"
         
-        // 6. Popover
+        // 6. Popover - FIXED: Text is ALWAYS BLACK now (without !important)
         "popover.menu { background-color: #ffffff; border-radius: 8px; border: 1px solid #d1d5db; padding: 6px; box-shadow: 0 8px 16px rgba(0,0,0,0.15); }"
         "popover.menu contents { background-color: #ffffff; }"
         "popover.menu listview { background-color: #ffffff; }"
-        "popover.menu listview row { padding: 10px 14px; background-color: #ffffff; border-radius: 6px; margin: 2px; }"
-        "popover.menu listview row label { color: #282c34; font-size: 13px; }"
-        "popover.menu listview row:hover { background-color: #e8f4fd; }"
-        "popover.menu listview row:hover label { color: #1e3a5f; }"
-        "popover.menu listview row:selected { background: linear-gradient(135deg, #61afef 0%, #528bff 100%); box-shadow: 0 2px 4px rgba(97, 175, 239, 0.3); }"
+        "popover.menu listview row { padding: 10px 14px; background-color: #ffffff; border-radius: 6px; margin: 2px; color: #282c34; }"
+        "popover.menu listview row > * { color: #282c34; }"
+        "popover.menu listview row label { color: #282c34; font-size: 13px; font-weight: 500; }"
+        "popover.menu listview row:hover { background-color: #e8f4fd; color: #282c34; }"
+        "popover.menu listview row:hover > * { color: #282c34; }"
+        "popover.menu listview row:hover label { color: #282c34; font-weight: 600; }"
+        "popover.menu listview row:selected { background: linear-gradient(135deg, #61afef 0%, #528bff 100%); box-shadow: 0 2px 4px rgba(97, 175, 239, 0.3); color: #ffffff; }"
+        "popover.menu listview row:selected > * { color: #ffffff; }"
         "popover.menu listview row:selected label { color: #ffffff; font-weight: 600; }"
-        "popover.menu listview row:selected:hover { background: linear-gradient(135deg, #528bff 0%, #4a7fd6 100%); }"
+        "popover.menu listview row:selected:hover { background: linear-gradient(135deg, #528bff 0%, #4a7fd6 100%); color: #ffffff; }"
+        "popover.menu listview row:selected:hover > * { color: #ffffff; }"
+        "popover.menu listview row:selected:hover label { color: #ffffff; }"
         "popover.menu listview row image { color: #282c34; }"
         "popover.menu listview row:selected image { color: #ffffff; }"
         
@@ -675,7 +687,31 @@ static void load_css() {
         ".legend-item:hover { background-color: rgba(97, 175, 239, 0.1); }"
         
         // 10. ScrolledWindow
-        "scrolledwindow { border-radius: 8px; }";
+        "scrolledwindow { border-radius: 8px; }"
+        
+        // 11. FILE CHOOSER
+        "filechooser { background-color: #ffffff; color: #282c34; }"
+        "filechooser button { color: #282c34; }"
+        "filechooser button label { color: #282c34; }"
+        "filechooser entry { background-color: #ffffff; color: #282c34; }"
+        "filechooser treeview { background-color: #ffffff; color: #282c34; }"
+        "filechooser treeview header { background-color: #f8f9fa; color: #282c34; }"
+        "filechooser columnview { background-color: #ffffff; color: #282c34; }"
+        "filechooser columnview header { background-color: #f8f9fa; color: #282c34; }"
+        "filechooser label { color: #282c34; }"
+        "filechooser .sidebar { background-color: #f8f9fa; }"
+        "filechooser .sidebar label { color: #282c34; }"
+        
+        // 12. HEADERBAR - AJOUT CORRECT
+        "headerbar { background: linear-gradient(180deg, #4a5057 0%, #363a42 100%); color: #ffffff; min-height: 46px; padding: 0 6px; }"
+        "headerbar .title { color: #ffffff; font-weight: bold; font-size: 15px; }"
+        "headerbar label { color: #ffffff; }"
+        "headerbar button { color: #ffffff; background: transparent; border: none; min-height: 24px; min-width: 24px; }"
+        "headerbar button:hover { background: rgba(255, 255, 255, 0.1); }"
+        
+        // 13. WINDOW TITLE
+        ".titlebar { background: linear-gradient(180deg, #3d4148 0%, #282c34 100%); color: #ffffff; }"
+        ".titlebar label { color: #ffffff; }";
     
     gtk_css_provider_load_from_string(provider, css);
     gtk_style_context_add_provider_for_display(gdk_display_get_default(), 
@@ -683,11 +719,18 @@ static void load_css() {
                                                 GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     g_object_unref(provider);
 }
-
 static void activate(GtkApplication *app, gpointer user_data) {
     load_css();
     main_window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(main_window), "Scheduler Simulator");
+
+    // Force un headerbar personnalisé avec titre visible
+    GtkWidget *header_bar = gtk_header_bar_new();
+    gtk_header_bar_set_show_title_buttons(GTK_HEADER_BAR(header_bar), TRUE);
+    GtkWidget *title_label = gtk_label_new("Scheduler Simulator");
+    gtk_widget_add_css_class(title_label, "title");
+    gtk_header_bar_set_title_widget(GTK_HEADER_BAR(header_bar), title_label);
+    gtk_window_set_titlebar(GTK_WINDOW(main_window), header_bar);
     gtk_window_set_default_size(GTK_WINDOW(main_window), 1200, 750);
 
     GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
@@ -769,24 +812,25 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_box_append(GTK_BOX(sidebar), quantum_control_box);
     gtk_widget_set_visible(quantum_control_box, FALSE);
 
-    // Legend Section
+// Legend Section
     gtk_box_append(GTK_BOX(sidebar), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
     GtkWidget *legend_header = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(legend_header), "<span size='large' weight='bold'>PROCESS LEGEND</span>");
+    gtk_label_set_markup(GTK_LABEL(legend_header), "<span size='large' weight='bold'> PROCESS LEGEND</span>");
     gtk_box_append(GTK_BOX(sidebar), legend_header);
     
+    // ScrolledWindow pour la legend AVEC VEXPAND
     GtkWidget *legend_scrolled = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(legend_scrolled),
                                    GTK_POLICY_NEVER,
                                    GTK_POLICY_AUTOMATIC);
-    gtk_widget_set_size_request(legend_scrolled, -1, 200);
-    gtk_widget_set_vexpand(legend_scrolled, TRUE);
+    gtk_widget_set_vexpand(legend_scrolled, TRUE);  // Prend tout l'espace disponible
+    gtk_widget_set_valign(legend_scrolled, GTK_ALIGN_FILL);
     
     legend_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(legend_scrolled), legend_box);
     gtk_box_append(GTK_BOX(sidebar), legend_scrolled);
     
-    GtkWidget *empty_lbl = gtk_label_new("No configuration loaded");
+    GtkWidget *empty_lbl = gtk_label_new(" No configuration loaded");
     gtk_widget_set_opacity(empty_lbl, 0.6);
     gtk_box_append(GTK_BOX(legend_box), empty_lbl);
 
