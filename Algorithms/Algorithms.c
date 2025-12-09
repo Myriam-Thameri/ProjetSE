@@ -4,6 +4,7 @@
 #include "./Algorithms.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 PCB* initialize_PCB(Config* config) {
@@ -61,3 +62,4 @@ PCB* find_pcb_by_id(PCB* pcb, int count, const char* id) {
     }
     return NULL;
 }
+

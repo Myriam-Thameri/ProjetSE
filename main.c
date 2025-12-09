@@ -41,11 +41,8 @@ int main(void){
 	printf("Or press 0 to quit :)");
 	scanf("%d",&ans);
     switch(ans){
-        case 1:
-            FCFS_Algo(CFG);
-            break;
         case 2:
-            run_priority_preemptive(CFG->processes, CFG->process_count);
+            run_priority_preemptive(CFG);
             break;
         case 3:
             RoundRobin_Algo(CFG);
