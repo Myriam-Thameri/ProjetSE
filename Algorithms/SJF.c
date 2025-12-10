@@ -1,19 +1,47 @@
 #include "../Config/types.h"
 #include "../Config/config.h"
 #include "Algorithms.h"
+#include "../Interface/gantt_chart.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+/* ============================================================================
+   QUEUE HELPERS (CRUCIAL FIX)
+   ============================================================================ */
 
+// remove the specific process (by ID) from queue
+QUEUE remove_specific_process(QUEUE q, const char *ID) {
+    QueueNode *node = q.start;
+    QueueNode *prev = NULL;
 
+    while (node != NULL) {
+        if (strcmp(node->process.ID, ID) == 0) {
+            if (prev == NULL) {
+                q.start = node->next;
+            } else {
+                prev->next = node->next;
+            }
+            if (node == q.end) {
+                q.end = prev;
+            }
+            free(node);
+            q.size--;
+            return q;
+        }
+        prev = node;
+        node = node->next;
+    }
+    return q;  // not found
+}
 
-/* -------------------------------------
-   SÉLECTION DU PROCESSUS SJF
--------------------------------------- */
+/* ============================================================================
+   SELECT SHORTEST JOB FIRST
+   ============================================================================ */
+
 PROCESS select_SJF(QUEUE queue) {
-
-    QueueNode* node = queue.start;
+    QueueNode *node = queue.start;
     PROCESS minP = node->process;
 
     while (node != NULL) {
@@ -22,16 +50,21 @@ PROCESS select_SJF(QUEUE queue) {
         }
         node = node->next;
     }
-
     return minP;
 }
 
-void SJF_Algo(Config* config) {
+/* ============================================================================
+   SJF ALGORITHM — FINAL FIXED VERSION
+   ============================================================================ */
 
-    PCB* pcb = initialize_PCB(config);
+void SJF_Algo(Config *config) {
+    clear_gantt_slices();
+
+    PCB *pcb = initialize_PCB(config);
     int time = 0;
     int finished = 0;
 
+    // For ASCII Gantt
     char line1[2000] = "";
     char line2[2000] = "";
     char line3[2000] = "";
@@ -40,19 +73,21 @@ void SJF_Algo(Config* config) {
     QUEUE ready_queue = {0, NULL, NULL};
     QUEUE io_queue = {0, NULL, NULL};
 
-    printf("PCB initialized for SJF (non-preemptive)\n");
+    printf("SJF simulation start\n");
 
     PROCESS current;
     int cpu_busy = 0;
 
-
+    /* =======================================================================
+       MAIN LOOP
+       ======================================================================= */
     while (finished < config->process_count) {
 
         printf("\nTime = %d\n", time);
 
-        /* -----------------------------
-           PROCESSUS ARRIVÉS
-        ------------------------------*/
+        /* ---------------------------------------------------------------
+           1. PROCESS ARRIVALS
+           --------------------------------------------------------------- */
         for (int i = 0; i < config->process_count; i++) {
             PROCESS p = config->processes[i];
 
@@ -62,12 +97,10 @@ void SJF_Algo(Config* config) {
             }
         }
 
-
-        /* -----------------------------
-              GESTION IO
-        ------------------------------*/
+        /* ---------------------------------------------------------------
+           2. IO MANAGEMENT
+           --------------------------------------------------------------- */
         if (io_queue.size > 0) {
-
             PROCESS io_p = io_queue.start->process;
 
             for (int i = 0; i < config->process_count; i++) {
@@ -79,13 +112,13 @@ void SJF_Algo(Config* config) {
                            time, io_p.ID, pcb[i].io_remaining);
 
                     if (pcb[i].io_remaining == 0) {
-                        printf("At time %d: Process %s IO finished, returns to ready queue\n",
+                        printf("At time %d: Process %s IO finished\n",
                                time, io_p.ID);
 
                         pcb[i].in_io = 0;
                         pcb[i].io_index++;
 
-                        io_queue = remove_process_from_queue(io_queue);
+                        io_queue = remove_specific_process(io_queue, io_p.ID);
                         ready_queue = add_process_to_queue(ready_queue, io_p);
                     }
                     break;
@@ -93,27 +126,25 @@ void SJF_Algo(Config* config) {
             }
         }
 
-
-        /* -----------------------------
-               CPU SÉLECTION SJF
-        ------------------------------*/
+        /* ---------------------------------------------------------------
+           3. CPU SELECTION (NON-PREEMPTIVE SJF)
+           --------------------------------------------------------------- */
         if (!cpu_busy && ready_queue.size > 0) {
-
             current = select_SJF(ready_queue);
             cpu_busy = 1;
-
-            printf("At time %d: CPU selects %s for execution (SJF)\n", time, current.ID);
+            printf("At time %d: CPU selects %s (SJF)\n", time, current.ID);
         }
-
 
         int cpu_executed = 0;
 
+        /* ---------------------------------------------------------------
+           4. CPU EXECUTION
+           --------------------------------------------------------------- */
         if (cpu_busy) {
-
             for (int i = 0; i < config->process_count; i++) {
-
                 if (strcmp(current.ID, pcb[i].process.ID) == 0 &&
-                    !pcb[i].finished && !pcb[i].in_io) {
+                    !pcb[i].finished &&
+                    !pcb[i].in_io) {
 
                     pcb[i].remaining_time--;
                     pcb[i].executed_time++;
@@ -121,13 +152,15 @@ void SJF_Algo(Config* config) {
 
                     printf("At time %d: %s executes\n", time, current.ID);
 
+                    add_gantt_slice(current.ID, time, 1, NULL);
+
                     strcat(line1, "--");
                     strcat(line2, current.ID);
                     strcat(line2, " ");
                     strcat(line3, "--");
                     strcat(line4, "   ");
 
-                    /* IO START ? */
+                    /* ---- IO START ---- */
                     if (current.io_count > 0 &&
                         pcb[i].io_index < current.io_count &&
                         pcb[i].executed_time ==
@@ -139,21 +172,21 @@ void SJF_Algo(Config* config) {
                         pcb[i].io_remaining =
                             current.io_operations[pcb[i].io_index].duration;
 
-                        ready_queue = remove_process_from_queue(ready_queue);
-
+                        ready_queue = remove_specific_process(ready_queue, current.ID);
                         io_queue = add_process_to_queue(io_queue, current);
+
                         cpu_busy = 0;
                         break;
                     }
 
-                    /* FIN ? */
+                    /* ---- PROCESS FINISHED ---- */
                     if (pcb[i].remaining_time == 0) {
                         printf("At time %d: %s finishes\n", time, current.ID);
 
                         pcb[i].finished = 1;
                         finished++;
 
-                        ready_queue = remove_process_from_queue(ready_queue);
+                        ready_queue = remove_specific_process(ready_queue, current.ID);
                         cpu_busy = 0;
                         break;
                     }
@@ -163,8 +196,12 @@ void SJF_Algo(Config* config) {
             }
         }
 
-        /* CPU INACTIF */
+        /* ---------------------------------------------------------------
+           5. CPU IDLE
+           --------------------------------------------------------------- */
         if (!cpu_executed) {
+            add_gantt_slice("IDLE", time, 1, "#cccccc");
+
             strcat(line1, "--");
             strcat(line2, "   ");
             strcat(line3, "--");
@@ -174,6 +211,9 @@ void SJF_Algo(Config* config) {
         time++;
     }
 
+    /* =======================================================================
+       FINAL ASCII GANTT
+       ======================================================================= */
     printf("\nGantt Chart\n");
     printf("%s\n", line1);
     printf("%s\n", line2);

@@ -5,9 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-void RoundRobin_Algo(Config* config) {
-    
+#include "../Interface/gantt_chart.h"
+void RoundRobin_Algo(Config* config, int quantum) {
+    clear_gantt_slices();
     PCB* pcb = initialize_PCB(config);
     int time = 0;
     int finished = 0;
@@ -24,10 +24,6 @@ void RoundRobin_Algo(Config* config) {
     io_queue.size = 0;
     io_queue.start = NULL;
     io_queue.end = NULL;
-
-    int quantum;
-    printf("Enter Quantum Time: ");
-    scanf("%d", &quantum);
     printf("Quantum Time set to %d units\n", quantum);
     int used_quantum = 0;
 
@@ -79,7 +75,7 @@ void RoundRobin_Algo(Config* config) {
                     pcb[i].remaining_time--;
                     used_quantum++;
                     cpu_executed = 1;
-                    
+                    add_gantt_slice(p.ID, time, 1, NULL);
                     printf("At time %d: Process %s executs\n", time, p.ID);
                     
                     strcat(line1, "--");
@@ -130,6 +126,7 @@ void RoundRobin_Algo(Config* config) {
         
         // CPU idle
         if (!cpu_executed) {
+            add_gantt_slice("IDLE", time, 1, "#cccccc");
             strcat(line1, "--");
             strcat(line2, "   ");
             strcat(line3, "--");
