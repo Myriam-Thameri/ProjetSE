@@ -1,0 +1,15 @@
+# Compiled object files
+*.o
+# Dependency files
+*.d
+# Compiled binaries/executables
+program
+a.out
+*.exe
+
+# Temporary files
+*.log
+*.tmp
+
+# VsCode settings
+.vscode/
