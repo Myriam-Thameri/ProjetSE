@@ -25,7 +25,7 @@ void run_priority_preemptive(Config* config);
 
 void SJF_Algo(Config* config);
 
-void RoundRobin_Algo(Config* config);
+void RoundRobin_Algo(Config* config, int quantum);
 
 PCB* initialize_PCB(Config* config); //return an initialized PCB for each process in a list 
 
@@ -34,6 +34,6 @@ QUEUE add_process_to_queue(QUEUE ready_queue, PROCESS p); // add a node in the e
 QUEUE remove_process_from_queue(QUEUE ready_queue); //remove the first process in the queue and return the updated queue
 
 void FCFS_Algo(Config* config); // First Come First Serve Algorithm
-void MultilevelStaticScheduler(Config* config);
-
+void MultilevelStaticScheduler(Config* config, int quantum);
+PCB* find_pcb_by_id(PCB* pcb, int count, const char* id);
 #endif // ALGORITHMS_H

@@ -7,7 +7,7 @@
  */
 #include "../Config/types.h"
 #include "../Config/config.h"
-#include "Algorithms.h"
+#include "../Utils/Algorithms.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,7 +16,8 @@
 
 /* =================== FCFS ALGORITHM =================== */
 void FCFS_Algo(Config* config) {
-
+    clear_gantt_slices();
+    
     PCB* pcb = initialize_PCB(config);
 
     QUEUE ready = { NULL, NULL, 0 };
@@ -25,8 +26,9 @@ void FCFS_Algo(Config* config) {
     int time = 0;
     int finished = 0;
 
-    char gantt[4096] = "";
-    char gantt_t[4096] = "0";
+    // Track current executing process for Gantt chart
+    char current_executing[32] = "";
+    int slice_start = 0;
 
     while (finished < config->process_count) {
 
@@ -65,6 +67,8 @@ void FCFS_Algo(Config* config) {
                     if (node == ioq.end) ioq.end = prev;
                     free(node);
                     ioq.size--;
+                    node = next_node;
+                    continue;
                 }
             }
 
@@ -77,12 +81,15 @@ void FCFS_Algo(Config* config) {
         }
 
         /* ----------------- 3. EXÉCUTION CPU ----------------- */
+        char executing_now[32] = "";
+        
         if (ready.size > 0) {
             QueueNode* front = ready.start;
             PROCESS p = front->process;
             PCB* current_pcb = find_pcb_by_id(pcb, config->process_count, p.ID);
 
             if (current_pcb) {
+                // Check if process needs to start I/O
                 int start_io = 0;
                 if (p.io_count > 0 &&
                     current_pcb->io_index < p.io_count &&
@@ -91,6 +98,7 @@ void FCFS_Algo(Config* config) {
                 }
 
                 if (start_io) {
+                    // Move process to I/O queue
                     ready = remove_process_from_queue(ready);
                     current_pcb->in_io = 1;
                     current_pcb->io_remaining = p.io_operations[current_pcb->io_index].duration;
@@ -98,24 +106,27 @@ void FCFS_Algo(Config* config) {
                     printf("[t=%d] %s → starts I/O (duration=%d)\n", time, p.ID,
                            p.io_operations[current_pcb->io_index].duration);
 
-                    // ne rien exécuter ce tick si CPU vide
+                    // Check if there's another process ready to execute
                     front = ready.start;
-                    if (!front) current_pcb = NULL;
-                    else {
+                    if (front) {
                         p = front->process;
                         current_pcb = find_pcb_by_id(pcb, config->process_count, p.ID);
+                    } else {
+                        current_pcb = NULL;
                     }
                 }
 
+                // Execute current process if available
                 if (current_pcb) {
+                    strcpy(executing_now, current_pcb->process.ID);
+                    
                     current_pcb->executed_time++;
                     current_pcb->remaining_time--;
-                    printf("[t=%d] CPU → %s\n", time, current_pcb->process.ID);
+                    printf("[t=%d] CPU → %s (executed=%d, remaining=%d)\n", 
+                           time, current_pcb->process.ID, 
+                           current_pcb->executed_time, current_pcb->remaining_time);
 
-                    char block[16];
-                    sprintf(block, "|%-4s", current_pcb->process.ID);
-                    strcat(gantt, block);
-
+                    // Check if process is finished
                     if (current_pcb->remaining_time == 0) {
                         ready = remove_process_from_queue(ready);
                         current_pcb->finished = 1;
@@ -125,21 +136,45 @@ void FCFS_Algo(Config* config) {
                 }
             }
         }
+        
+        /* ----------------- 4. UPDATE GANTT CHART SLICES ----------------- */
+        if (strcmp(current_executing, executing_now) != 0) {
+            // Process switched, save the previous slice
+            if (strlen(current_executing) > 0) {
+                add_gantt_slice(current_executing, slice_start, 1, NULL);
+            }
+            
+            // Start tracking new process
+            strcpy(current_executing, executing_now);
+            slice_start = time;
+        }
 
-        /* ----------------- Mise à jour de la timeline Gantt ----------------- */
         time++;
-        char tb[16];
-        sprintf(tb, " %d", time);
-        strcat(gantt_t, tb);
+    }
+    
+    /* ----------------- Save final Gantt slice ----------------- */
+    if (strlen(current_executing) > 0) {
+        add_gantt_slice(current_executing, slice_start, 1, NULL);
     }
 
     /* ----------------- AFFICHAGE FINAL ----------------- */
     printf("\n");
     printf("==================== GANTT CHART ====================\n");
-    printf("%s|\n", gantt);
-    printf("%s\n", gantt_t);
     printf("Temps total: %d\n", time);
     printf("=====================================================\n");
 
-    free(pcb);
+    // Clean up queues
+    while (ready.start) {
+        QueueNode* temp = ready.start;
+        ready.start = ready.start->next;
+        free(temp);
+    }
+    
+    while (ioq.start) {
+        QueueNode* temp = ioq.start;
+        ioq.start = ioq.start->next;
+        free(temp);
+    }
+
+    // DON'T free(pcb) - it's a static array!
 }

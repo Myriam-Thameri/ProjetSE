@@ -1,6 +1,6 @@
 #include "../Config/types.h"
 #include "../Config/config.h"
-#include "Algorithms.h"
+#include "../Utils/Algorithms.h"
 #include "../Interface/gantt_chart.h"
 
 #include <stdio.h>

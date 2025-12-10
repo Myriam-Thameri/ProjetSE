@@ -3,7 +3,7 @@
 #include <string.h>
 #include "../Config/config.h"
 #include "../Config/types.h"
-#include "Algorithms.h"
+#include "../Utils/Algorithms.h"
 #include "../Interface/gantt_chart.h"
 
 #define MAX_QUEUE 256

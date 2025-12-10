@@ -1,9 +1,11 @@
-Algorithms/fcfs.o: Algorithms/fcfs.c Algorithms/../Config/types.h \
+Algorithms/Preemptive_Priority.o: Algorithms/Preemptive_Priority.c \
  Algorithms/../Config/config.h Algorithms/../Config/types.h \
- Algorithms/Algorithms.h Algorithms/../Interface/gantt_chart.h \
- /usr/include/gtk-4.0/gtk/gtk.h /usr/include/gtk-4.0/gtk/css/gtkcss.h \
- /usr/include/glib-2.0/glib.h /usr/include/glib-2.0/glib/galloca.h \
- /usr/include/glib-2.0/glib/gtypes.h \
+ Algorithms/../Config/types.h Algorithms/../Utils/Algorithms.h \
+ Algorithms/../Utils/../Config/config.h \
+ Algorithms/../Utils/../Config/types.h \
+ Algorithms/../Interface/gantt_chart.h /usr/include/gtk-4.0/gtk/gtk.h \
+ /usr/include/gtk-4.0/gtk/css/gtkcss.h /usr/include/glib-2.0/glib.h \
+ /usr/include/glib-2.0/glib/galloca.h /usr/include/glib-2.0/glib/gtypes.h \
  /usr/lib/x86_64-linux-gnu/glib-2.0/include/glibconfig.h \
  /usr/include/glib-2.0/glib/gmacros.h \
  /usr/include/glib-2.0/glib/gversionmacros.h \
@@ -674,10 +676,12 @@ Algorithms/fcfs.o: Algorithms/fcfs.c Algorithms/../Config/types.h \
  /usr/include/gtk-4.0/gtk/gtkwindowcontrols.h \
  /usr/include/gtk-4.0/gtk/gtkwindowgroup.h \
  /usr/include/gtk-4.0/gtk/gtkwindowhandle.h
-Algorithms/../Config/types.h:
 Algorithms/../Config/config.h:
 Algorithms/../Config/types.h:
-Algorithms/Algorithms.h:
+Algorithms/../Config/types.h:
+Algorithms/../Utils/Algorithms.h:
+Algorithms/../Utils/../Config/config.h:
+Algorithms/../Utils/../Config/types.h:
 Algorithms/../Interface/gantt_chart.h:
 /usr/include/gtk-4.0/gtk/gtk.h:
 /usr/include/gtk-4.0/gtk/css/gtkcss.h:

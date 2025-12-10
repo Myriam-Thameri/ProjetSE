@@ -1,5 +1,8 @@
-Algorithms/srt.o: Algorithms/srt.c Algorithms/../Config/config.h \
- Algorithms/../Config/types.h Algorithms/../Config/types.h \
+Algorithms/Multilevel_Static.o: Algorithms/Multilevel_Static.c \
+ Algorithms/../Config/types.h Algorithms/../Config/config.h \
+ Algorithms/../Config/types.h Algorithms/../Utils/Algorithms.h \
+ Algorithms/../Utils/../Config/config.h \
+ Algorithms/../Utils/../Config/types.h \
  Algorithms/../Interface/gantt_chart.h /usr/include/gtk-4.0/gtk/gtk.h \
  /usr/include/gtk-4.0/gtk/css/gtkcss.h /usr/include/glib-2.0/glib.h \
  /usr/include/glib-2.0/glib/galloca.h /usr/include/glib-2.0/glib/gtypes.h \
@@ -673,9 +676,12 @@ Algorithms/srt.o: Algorithms/srt.c Algorithms/../Config/config.h \
  /usr/include/gtk-4.0/gtk/gtkwindowcontrols.h \
  /usr/include/gtk-4.0/gtk/gtkwindowgroup.h \
  /usr/include/gtk-4.0/gtk/gtkwindowhandle.h
+Algorithms/../Config/types.h:
 Algorithms/../Config/config.h:
 Algorithms/../Config/types.h:
-Algorithms/../Config/types.h:
+Algorithms/../Utils/Algorithms.h:
+Algorithms/../Utils/../Config/config.h:
+Algorithms/../Utils/../Config/types.h:
 Algorithms/../Interface/gantt_chart.h:
 /usr/include/gtk-4.0/gtk/gtk.h:
 /usr/include/gtk-4.0/gtk/css/gtkcss.h:

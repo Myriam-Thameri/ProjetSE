@@ -3,13 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../functionnalities.h" 
+#include "../Utils/functionnalities.h" 
 #include "../Utils/utils.h"
 #include "./interface_utils.h"
 #include "./gantt_chart.h"  // NEW: Include Gantt chart
 #include "../Config/config.h"
 #include "../Config/types.h"
-#include "../Algorithms/Algorithms.h"
+#include "../Utils/Algorithms.h"
 
 #define CONFIG_DIR "./Config"
 #define MAX_FILES 50
@@ -20,8 +20,11 @@ typedef struct {
     GtkWidget *process_list_box; 
     GtkWidget *algo_dropdown;
     GtkWidget *config_entry;
-    GtkWidget *gantt_widget;  // NEW: Gantt chart widget
+    GtkWidget *gantt_widget;
+    GtkWidget *quantum_box;      // NEW: Container for quantum input
+    GtkWidget *quantum_entry;    // NEW: Quantum input field
     Config *CFG;
+    int quantum;                 // NEW: Quantum value storage
     
     char available_files[MAX_FILES][MAX_FILENAME_LEN];
     int files_count;
@@ -187,12 +190,29 @@ static void on_browse_clicked(GtkWidget *button, gpointer user_data) {
     gtk_window_present(GTK_WINDOW(dialog));
 }
 
+// NEW: Function to check if algorithm requires quantum
+static gboolean algorithm_requires_quantum(const char *algorithm) {
+    return (strcmp(algorithm, "Round_Robin") == 0 ||
+            strcmp(algorithm, "Multilevel_Aging") == 0 ||
+            strcmp(algorithm, "Multilevel_Static") == 0);
+}
+
+// NEW: Callback to show/hide quantum input based on algorithm selection
 static void on_algorithm_selected(GObject *dropdown, GParamSpec *pspec, gpointer user_data) {
+    AppContext *app = (AppContext *)user_data;
     GtkStringList *list = GTK_STRING_LIST(gtk_drop_down_get_model(GTK_DROP_DOWN(dropdown)));
     guint index = gtk_drop_down_get_selected(GTK_DROP_DOWN(dropdown));
+    
     if (index != GTK_INVALID_LIST_POSITION) {
         const char *algorithm = gtk_string_list_get_string(list, index);
         g_print("Selected algorithm: %s\n", algorithm);
+        
+        // Show or hide quantum input based on algorithm
+        if (algorithm_requires_quantum(algorithm)) {
+            gtk_widget_set_visible(app->quantum_box, TRUE);
+        } else {
+            gtk_widget_set_visible(app->quantum_box, FALSE);
+        }
     }
 }
 
@@ -238,9 +258,7 @@ static void on_add_algorithm_clicked(GtkButton *button, gpointer user_data) {
     gtk_file_dialog_open(dialog, GTK_WINDOW(app->window), NULL, on_algorithm_file_added, app);
 }
 
-// NEW: Start button with Gantt chart generation
-
-    // NEW: Start button with Gantt chart generation
+// NEW: Start button with quantum support
 static void on_start_clicked(GtkButton *button, gpointer user_data) {
     AppContext *app = (AppContext *)user_data;
     
@@ -259,34 +277,52 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
     }
     
     const char *algorithm = gtk_string_list_get_string(list, index);
+    
+    // Get quantum value if needed
+    int quantum = 2; // Default value
+    if (algorithm_requires_quantum(algorithm)) {
+        const char *quantum_text = gtk_editable_get_text(GTK_EDITABLE(app->quantum_entry));
+        if (quantum_text && strlen(quantum_text) > 0) {
+            quantum = atoi(quantum_text);
+            if (quantum <= 0) {
+                g_print("Warning: Invalid quantum value, using default (2)\n");
+                quantum = 2;
+            }
+        }
+    }
+    
+    // Store quantum in app context
+    app->quantum = quantum;
+    
     g_print("Starting scheduler with algorithm: %s\n", algorithm);
+    if (algorithm_requires_quantum(algorithm)) {
+        g_print("Quantum: %d\n", quantum);
+    }
     g_print("Processes loaded: %d\n", app->CFG->process_count);
     
     // Clear previous Gantt data before running algorithm
     clear_gantt_slices();
     
     // Call the appropriate scheduling algorithm based on selection
-    if (strcmp(algorithm, "fcfs") == 0) {
+    if (strcmp(algorithm, "First_In_First_Out") == 0) {
         FCFS_Algo(app->CFG);
     } 
-    else if (strcmp(algorithm, "RoundRobin") == 0) {
-        RoundRobin_Algo(app->CFG);
+    else if (strcmp(algorithm, "Round_Robin") == 0) {
+        RoundRobin_Algo(app->CFG, quantum);
     }
-    else if (strcmp(algorithm, "multilevel_aging") == 0) {
-        MultilevelAgingScheduler(app->CFG);
+    else if (strcmp(algorithm, "Multilevel_Aging") == 0) {
+        MultilevelAgingScheduler(app->CFG, quantum,1,1);
     }
-    else if (strcmp(algorithm, "PreemptivePriority") == 0) {
-        // You might want to add a quantum input field in the UI
-        int quantum = 2; // Default quantum
+    else if (strcmp(algorithm, "Preemptive_Priority") == 0) {
         run_priority_preemptive(app->CFG);
     }
-    else if (strcmp(algorithm, "SJF") == 0 ) {
+    else if (strcmp(algorithm, "Shortest_Job_First") == 0) {
         SJF_Algo(app->CFG);
     }
-    else if (strcmp(algorithm, "MultilevelStatic") == 0) {
-        MultilevelStaticScheduler(app->CFG);
+    else if (strcmp(algorithm, "Multilevel_Static") == 0) {
+        MultilevelStaticScheduler(app->CFG, quantum);
     }
-    else if (strcmp(algorithm, "srt") == 0) {
+    else if (strcmp(algorithm, "Shortest_Remaining_Time") == 0) {
         SRT_Algo(app->CFG);
     }
     else {
@@ -343,8 +379,28 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
 
     app->algo_dropdown = gtk_drop_down_new(G_LIST_MODEL(algo_list), NULL);
     gtk_widget_add_css_class(app->algo_dropdown, "dropdown");
-    g_signal_connect(app->algo_dropdown, "notify::selected", G_CALLBACK(on_algorithm_selected), NULL);
     gtk_box_append(GTK_BOX(card), app->algo_dropdown);
+
+    // NEW: Quantum Input Section (hidden by default)
+    app->quantum_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_widget_set_margin_top(app->quantum_box, 10);
+    
+    GtkWidget *quantum_label = gtk_label_new("Time Quantum");
+    gtk_widget_set_halign(quantum_label, GTK_ALIGN_START);
+    gtk_widget_add_css_class(quantum_label, "quantum-label");
+    gtk_box_append(GTK_BOX(app->quantum_box), quantum_label);
+    
+    app->quantum_entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(app->quantum_entry), "Enter quantum (default: 2)");
+    gtk_editable_set_text(GTK_EDITABLE(app->quantum_entry), "2");
+    gtk_widget_add_css_class(app->quantum_entry, "quantum-input");
+    gtk_box_append(GTK_BOX(app->quantum_box), app->quantum_entry);
+    
+    gtk_widget_set_visible(app->quantum_box, FALSE); // Hidden by default
+    gtk_box_append(GTK_BOX(card), app->quantum_box);
+    
+    // Connect the algorithm selection signal AFTER quantum_box is created
+    g_signal_connect(app->algo_dropdown, "notify::selected", G_CALLBACK(on_algorithm_selected), app);
 
     gtk_box_append(GTK_BOX(card), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
 
@@ -419,6 +475,8 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
         ".title-label { font-size: 36px; font-weight: bold; }"
         ".card { background: white; border-radius: 12px; padding: 20px; }"
         ".section-label { font-weight: bold; margin-bottom: 5px; color: #444; }"
+        ".quantum-label { font-size: 14px; color: #666; }"
+        ".quantum-input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }"
         ".process-list-container { margin-top: 15px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; }"
         ".gantt-container { margin-top: 15px; border: 1px solid #ddd; border-radius: 5px; background: white; min-height: 150px; }"
         ".start-button { font-size: 18px; padding: 10px; margin-bottom: 20px; }"
@@ -431,7 +489,8 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
 
 int main(int argc, char **argv) {
     AppContext *app_data = g_new0(AppContext, 1);
-    app_data->CFG = g_new0(Config, 1); 
+    app_data->CFG = g_new0(Config, 1);
+    app_data->quantum = 2; // Initialize quantum with default value
 
     GtkApplication *app = gtk_application_new("com.example.OSScheduler", G_APPLICATION_DEFAULT_FLAGS);
     g_signal_connect(app, "activate", G_CALLBACK(activate), app_data);

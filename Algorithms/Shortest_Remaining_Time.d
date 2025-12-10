@@ -1,6 +1,6 @@
-Algorithms/PreemptivePriority.o: Algorithms/PreemptivePriority.c \
- Algorithms/../Config/config.h Algorithms/../Config/types.h \
- Algorithms/../Config/types.h Algorithms/Algorithms.h \
+Algorithms/Shortest_Remaining_Time.o: \
+ Algorithms/Shortest_Remaining_Time.c Algorithms/../Config/config.h \
+ Algorithms/../Config/types.h Algorithms/../Config/types.h \
  Algorithms/../Interface/gantt_chart.h /usr/include/gtk-4.0/gtk/gtk.h \
  /usr/include/gtk-4.0/gtk/css/gtkcss.h /usr/include/glib-2.0/glib.h \
  /usr/include/glib-2.0/glib/galloca.h /usr/include/glib-2.0/glib/gtypes.h \
@@ -677,7 +677,6 @@ Algorithms/PreemptivePriority.o: Algorithms/PreemptivePriority.c \
 Algorithms/../Config/config.h:
 Algorithms/../Config/types.h:
 Algorithms/../Config/types.h:
-Algorithms/Algorithms.h:
 Algorithms/../Interface/gantt_chart.h:
 /usr/include/gtk-4.0/gtk/gtk.h:
 /usr/include/gtk-4.0/gtk/css/gtkcss.h:

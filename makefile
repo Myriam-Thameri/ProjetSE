@@ -7,18 +7,18 @@ GTK_FLAGS = $(shell pkg-config --cflags --libs gtk4)
 
 SRC = \
 Config/config.c \
-Algorithms/SJF.c \
-Algorithms/RoundRobin.c \
-Algorithms/srt.c \
-Algorithms/MultilevelStatic.c \
-Algorithms/fcfs.c \
-Algorithms/multilevel_aging.c \
-Algorithms/PreemptivePriority.c \
-Algorithms/Algorithms.c \
+Algorithms/Shortest_Job_First.c \
+Algorithms/Round_Robin.c \
+Algorithms/Shortest_Remaining_Time.c \
+Algorithms/Multilevel_Static.c \
+Algorithms/First_In_First_Out.c \
+Algorithms/Multilevel_Aging.c \
+Algorithms/Preemptive_Priority.c \
+Utils/Algorithms.c \
 Interface/Interface.c \
 Interface/gantt_chart.c \
 Interface/interface_utils.c \
-get_algorithms_names.c
+Utils/get_algorithms_names.c
 
 OBJ = $(SRC:.c=.o)
 DEPS = $(SRC:.c=.d)
