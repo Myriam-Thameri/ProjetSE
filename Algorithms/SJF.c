@@ -44,8 +44,8 @@ void SJF_Algo(Config* config) {
     char line3[2000] = "";
     char line4[2000] = "";
 
-    QUEUE ready_queue = {0, NULL, NULL};
-    QUEUE io_queue = {0, NULL, NULL};
+    QUEUE ready_queue = {NULL, NULL, 0};
+    QUEUE io_queue = {NULL, NULL, 0};
 
     printf("PCB initialized for SJF (non-preemptive)\n");
 
