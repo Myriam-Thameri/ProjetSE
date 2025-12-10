@@ -44,7 +44,6 @@ typedef struct QueueNode{
 } QueueNode;
 
 typedef struct{
-    QueueNode node;
     QueueNode* start;
     QueueNode* end;
     int size;

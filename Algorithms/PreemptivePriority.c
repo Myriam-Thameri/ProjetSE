@@ -74,7 +74,7 @@ static void process_io_queue(Queue *ioq, Queue *readyq, int time) {
     }
 }
 
-static int needs_io_at_this_moment(PCB *p, int time) {
+static int needs_io_at_this_moment(PCB *p) {
     if (p->io_index >= p->process.io_count) return 0;
     
     IO_OPERATION *io_op = &p->process.io_operations[p->io_index];
@@ -135,7 +135,7 @@ void run_priority_preemptive(Config *config) {
             }
         }
 
-        if (running && needs_io_at_this_moment(running, time)) {
+        if (running && needs_io_at_this_moment(running)) {
             if (io_device_busy) {
 
                 printf("%s needs IO but device BUSY - becomes BLOCKED\n", running->process.ID);
@@ -160,7 +160,7 @@ void run_priority_preemptive(Config *config) {
         while (i < readyq.rear) {
             PCB *p = readyq.arr[i];
             
-            if (needs_io_at_this_moment(p, time) && p->process.arrival_time <= time) {
+            if (needs_io_at_this_moment(p) && p->process.arrival_time <= time) {
                 if (io_device_busy) {
 
                     printf("%s needs IO but device BUSY - becomes BLOCKED\n", p->process.ID);
