@@ -50,9 +50,26 @@ int main(void){
         case 4:
             SJF_Algo(CFG);
             break;
-        case 5:
-            MultilevelAgingScheduler(CFG);
+        case 5: {
+            int quantum = 2;
+            int aging_interval = 5;
+            int max_priority = 5;
+
+            printf("\nEnter Quantum (default 2): ");
+            scanf("%d", &quantum);
+            if (quantum <= 0) quantum = 2;
+
+            printf("Enter Aging Interval (default 5): ");
+            scanf("%d", &aging_interval);
+            if (aging_interval <= 0) aging_interval = 5;
+
+            printf("Enter Max Priority (default 5): ");
+            scanf("%d", &max_priority);
+            if (max_priority <= 0) max_priority = 5;
+
+            MultilevelAgingScheduler(CFG, quantum, aging_interval, max_priority);
             break;
+        }
         case 6:
             MultilevelStaticScheduler(CFG);
             break;
