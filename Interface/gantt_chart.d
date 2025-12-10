@@ -1,6 +1,4 @@
-Algorithms/fcfs.o: Algorithms/fcfs.c Algorithms/../Config/types.h \
- Algorithms/../Config/config.h Algorithms/../Config/types.h \
- Algorithms/Algorithms.h Algorithms/../Interface/gantt_chart.h \
+Interface/gantt_chart.o: Interface/gantt_chart.c \
  /usr/include/gtk-4.0/gtk/gtk.h /usr/include/gtk-4.0/gtk/css/gtkcss.h \
  /usr/include/glib-2.0/glib.h /usr/include/glib-2.0/glib/galloca.h \
  /usr/include/glib-2.0/glib/gtypes.h \
@@ -673,12 +671,7 @@ Algorithms/fcfs.o: Algorithms/fcfs.c Algorithms/../Config/types.h \
  /usr/include/gtk-4.0/gtk/gtkwidgetpaintable.h \
  /usr/include/gtk-4.0/gtk/gtkwindowcontrols.h \
  /usr/include/gtk-4.0/gtk/gtkwindowgroup.h \
- /usr/include/gtk-4.0/gtk/gtkwindowhandle.h
-Algorithms/../Config/types.h:
-Algorithms/../Config/config.h:
-Algorithms/../Config/types.h:
-Algorithms/Algorithms.h:
-Algorithms/../Interface/gantt_chart.h:
+ /usr/include/gtk-4.0/gtk/gtkwindowhandle.h Interface/gantt_chart.h
 /usr/include/gtk-4.0/gtk/gtk.h:
 /usr/include/gtk-4.0/gtk/css/gtkcss.h:
 /usr/include/glib-2.0/glib.h:
@@ -1393,3 +1386,4 @@ Algorithms/../Interface/gantt_chart.h:
 /usr/include/gtk-4.0/gtk/gtkwindowcontrols.h:
 /usr/include/gtk-4.0/gtk/gtkwindowgroup.h:
 /usr/include/gtk-4.0/gtk/gtkwindowhandle.h:
+Interface/gantt_chart.h:

@@ -4,7 +4,8 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/include/gtk-4.0"
+                "/usr/include/gtk-4.0",
+                "/usr/include/glib-3.0"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

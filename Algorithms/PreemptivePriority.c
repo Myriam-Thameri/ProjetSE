@@ -4,6 +4,7 @@
 #include "../Config/config.h"
 #include "../Config/types.h"
 #include "Algorithms.h"
+#include "../Interface/gantt_chart.h"
 
 #define MAX_QUEUE 256
 
@@ -60,7 +61,6 @@ static int needs_io_after_current_execution(PCB *p) {
     IO_OPERATION *io_op = &p->process.io_operations[p->io_index];
     
     // Check if after this execution, the executed_time will reach IO start time
-    // Note: executed_time is the total CPU time the process has received so far
     if (p->executed_time + 1 == io_op->start_time) {
         return 1;
     }
@@ -87,7 +87,7 @@ static void process_io_queue(Queue *ioq, Queue *readyq, int time) {
 /* ------------------- MAIN SIMULATION ------------------- */
 void run_priority_preemptive(Config *config) {
     if (!config || config->process_count <= 0) return;
-
+    clear_gantt_slices();
     int count = config->process_count;
     PCB pcbs[MAX_QUEUE]; 
     Queue readyq, ioq;
@@ -155,10 +155,12 @@ void run_priority_preemptive(Config *config) {
                            running->process.ID);
                     q_enqueue(&readyq, running);
                     running = NULL;
+                    // CPU is idle this time unit - add idle slice
+                    add_gantt_slice("IDLE", time, 1, "#cccccc");
                 } else {
                     // Execute then enter IO
                     printf("%s executes (will enter IO after)\n", running->process.ID);
-                    
+                    add_gantt_slice(running->process.ID, time, 1, NULL);
                     running->remaining_time--;
                     running->executed_time++;
                     
@@ -180,9 +182,9 @@ void run_priority_preemptive(Config *config) {
                     }
                 }
             } else {
-                // Normal execution
+                // Normal execution - ADD GANTT SLICE HERE
                 printf("%s executes\n", running->process.ID);
-                
+                add_gantt_slice(running->process.ID, time, 1, NULL);
                 running->remaining_time--;
                 running->executed_time++;
                 
@@ -193,7 +195,7 @@ void run_priority_preemptive(Config *config) {
                 }
             }
         } else {
-            // CPU idle
+            // CPU idle - ADD IDLE SLICE
             if (io_device_busy) {
                 printf("CPU idle (IO device busy)\n");
             } else if (!q_empty(&readyq)) {
@@ -201,6 +203,7 @@ void run_priority_preemptive(Config *config) {
             } else {
                 printf("CPU idle\n");
             }
+            add_gantt_slice("IDLE", time, 1, "#cccccc");
         }
 
         /* STEP 5 — Update wait times */
@@ -235,16 +238,4 @@ void run_priority_preemptive(Config *config) {
     for (int i = 0; i < count; i++) {
         printf("%s\t%d\n", pcbs[i].process.ID, pcbs[i].wait_time);
     }
-}
-
-
-int main() {
-    Config config; // create a Config object
-    if (load_config("Config/config.txt", &config) != 0) {
-        printf("Failed to load config\n");
-        return 1;
-    }
-
-    run_priority_preemptive(&config); // pass pointer to config
-    return 0;
 }

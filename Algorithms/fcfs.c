@@ -1,51 +1,18 @@
+/*
+ * Simulateur d'Ordonnancement de Processus
+ * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
+ *
+ * Licensed under the MIT License
+ * See LICENSE file in the project root for full license information.
+ */
 #include "../Config/types.h"
 #include "../Config/config.h"
 #include "Algorithms.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../Interface/gantt_chart.h"
 
-
-/* =================== Queue utils =================== */
-QUEUE add_process_to_queue(QUEUE q, PROCESS p) {
-    QueueNode* node = malloc(sizeof(QueueNode));
-    if (!node) {
-        printf("Erreur d'allocation mémoire !\n");
-        exit(1);
-    }
-    node->process = p;
-    node->next = NULL;
-
-    if (q.size == 0) {
-        q.start = q.end = node;
-    } else {
-        q.end->next = node;
-        q.end = node;
-    }
-    q.size++;
-    return q;
-}
-
-QUEUE remove_process_from_queue(QUEUE q) {
-    if (q.size == 0) return q;
-
-    QueueNode* tmp = q.start;
-    q.start = q.start->next;
-    free(tmp);
-    q.size--;
-    if (q.size == 0) q.end = NULL;
-    return q;
-}
-
-/* =================== Trouver PCB par ID =================== */
-PCB* find_pcb_by_id(PCB* pcb, int count, const char* id) {
-    for (int i = 0; i < count; i++) {
-        if (strcmp(pcb[i].process.ID, id) == 0) {
-            return &pcb[i];
-        }
-    }
-    return NULL;
-}
 
 /* =================== FCFS ALGORITHM =================== */
 void FCFS_Algo(Config* config) {
