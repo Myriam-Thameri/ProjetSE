@@ -1,7 +1,7 @@
 #include "../Config/types.h"
 #include "../Config/config.h"
 #include "Algorithms.h"
-
+#include "../Interface/gantt_chart.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -33,8 +33,9 @@ void apply_aging(PCB* pcbs, int total, int current_time, PCB* running)
     }
 }
 
-void MultilevelAgingScheduler(Config* config)
+void MultilevelAgingScheduler(Config* config,int quantum)
 {
+    clear_gantt_slices();
     PCB* pcbs = initialize_PCB(config);
     int total = config->process_count;
     int finished = 0;
@@ -60,13 +61,13 @@ void MultilevelAgingScheduler(Config* config)
         }
         apply_aging(pcbs, total, time, next);
         if (next) {
-            int run_for = QUANTUM;
+            int run_for = quantum;
             if (next->remaining_time < run_for)
                 run_for = next->remaining_time;
 
             printf("Time %d-%d: Running %s (priority=%d)\n",
                 time, time + run_for, next->process.ID, next->process.priority);
-
+            add_gantt_slice(next->process.ID, time, run_for, NULL);
             next->remaining_time -= run_for;
             next->wait_time = 0;
             time += run_for;
@@ -79,6 +80,7 @@ void MultilevelAgingScheduler(Config* config)
 
         } else {
             printf("Time %d: CPU idle\n", time);
+            add_gantt_slice("IDLE", time, 1, "#cccccc");
             time++;
         }
     }
