@@ -338,7 +338,6 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     int counts = 0;
     char **algorithms = get_algorithms(&counts); 
 
-
     GtkStringList *algo_list = gtk_string_list_new(NULL);
     for (int i = 0; i < counts; i++) {
         gtk_string_list_append(algo_list, algorithms[i]);
@@ -346,7 +345,7 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
 
     app->window = gtk_application_window_new(gtk_app);
     gtk_window_set_title(GTK_WINDOW(app->window), "OS Scheduler");
-    gtk_window_set_default_size(GTK_WINDOW(app->window), 900, 850);
+    gtk_window_set_default_size(GTK_WINDOW(app->window), 1200, 850);
 
     GtkWidget *main_container = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     
@@ -356,17 +355,22 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_widget_set_margin_bottom(header_box, 30);
     gtk_widget_set_halign(header_box, GTK_ALIGN_CENTER);
     gtk_widget_add_css_class(header_box, "header-section");
-    gtk_box_append(GTK_BOX(header_box), gtk_label_new("⚙"));
-    GtkWidget *title = gtk_label_new("OS Scheduler");
+    GtkWidget *title = gtk_label_new("⚙ OS Scheduler");
     gtk_widget_add_css_class(title, "title-label");
     gtk_box_append(GTK_BOX(header_box), title);
     gtk_box_append(GTK_BOX(main_container), header_box);
 
-    // Card
+    // Conteneur horizontal pour les deux sections
+    GtkWidget *horizontal_container = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 20);
+    gtk_widget_set_margin_start(horizontal_container, 50);
+    gtk_widget_set_margin_end(horizontal_container, 50);
+    gtk_widget_set_margin_bottom(horizontal_container, 30);
+    gtk_widget_set_hexpand(horizontal_container, TRUE);
+
+    // Card gauche (Configuration) - 1/4 de la largeur
     GtkWidget *card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
-    gtk_widget_set_margin_start(card, 50);
-    gtk_widget_set_margin_end(card, 50);
-    gtk_widget_set_margin_bottom(card, 30);
+    gtk_widget_set_hexpand(card, FALSE);  // Ne pas étendre
+    gtk_widget_set_size_request(card, 250, -1);  // Largeur fixe ~1/4
     gtk_widget_add_css_class(card, "card");
 
     // Algorithm Section
@@ -381,6 +385,11 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_box_append(GTK_BOX(card), app->algo_dropdown);
 
     gtk_box_append(GTK_BOX(card), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
+
+    // Add Algorithm Button
+    GtkWidget *btn_add_algo = gtk_button_new_with_label("Import Custom Algorithm");
+    g_signal_connect(btn_add_algo, "clicked", G_CALLBACK(on_add_algorithm_clicked), app);
+    gtk_box_append(GTK_BOX(card), btn_add_algo);
 
     // Configuration Section
     GtkWidget *config_label = gtk_label_new("Configuration");
@@ -407,7 +416,7 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
 
     // Process List
     GtkWidget *list_scroller = gtk_scrolled_window_new();
-    gtk_widget_set_size_request(list_scroller, -1, 150);
+    gtk_widget_set_size_request(list_scroller, -1, 300);
     gtk_widget_add_css_class(list_scroller, "process-list-container");
     
     app->process_list_box = gtk_list_box_new();
@@ -415,24 +424,36 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(list_scroller), app->process_list_box);
     gtk_box_append(GTK_BOX(card), list_scroller);
 
-    // NEW: Gantt Chart Section
-    gtk_box_append(GTK_BOX(card), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
-    
+    // Ajouter la card gauche au conteneur horizontal
+    gtk_box_append(GTK_BOX(horizontal_container), card);
+
+    // Card droite (Gantt Chart) - 3/4 de la largeur
+    GtkWidget *gantt_card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
+    gtk_widget_set_hexpand(gantt_card, TRUE);  
+    gtk_widget_add_css_class(gantt_card, "card");
+
     GtkWidget *gantt_label = gtk_label_new("Execution Timeline");
     gtk_widget_set_halign(gantt_label, GTK_ALIGN_START);
     gtk_widget_add_css_class(gantt_label, "section-label");
-    gtk_box_append(GTK_BOX(card), gantt_label);
-    
+    gtk_box_append(GTK_BOX(gantt_card), gantt_label);
+
+    // SCROLLABLE GANTT SECTION
+    GtkWidget *gantt_scroller = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(gantt_scroller),
+                                    GTK_POLICY_AUTOMATIC,  
+                                    GTK_POLICY_AUTOMATIC); 
+    gtk_widget_set_vexpand(gantt_scroller, TRUE);
+    gtk_widget_add_css_class(gantt_scroller, "gantt-container");
+
     app->gantt_widget = create_gantt_chart_widget();
-    gtk_widget_add_css_class(app->gantt_widget, "gantt-container");
-    gtk_box_append(GTK_BOX(card), app->gantt_widget);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(gantt_scroller), app->gantt_widget);
+    gtk_box_append(GTK_BOX(gantt_card), gantt_scroller);
 
-    // Add Algorithm Button
-    GtkWidget *btn_add_algo = gtk_button_new_with_label("Import Custom Algorithm");
-    g_signal_connect(btn_add_algo, "clicked", G_CALLBACK(on_add_algorithm_clicked), app);
-    gtk_box_append(GTK_BOX(card), btn_add_algo);
+    // Ajouter la card droite au conteneur horizontal
+    gtk_box_append(GTK_BOX(horizontal_container), gantt_card);
 
-    gtk_box_append(GTK_BOX(main_container), card);
+    // Ajouter le conteneur horizontal au main_container
+    gtk_box_append(GTK_BOX(main_container), horizontal_container);
 
     // Start Button
     GtkWidget *start_btn = gtk_button_new_with_label("Start Scheduler");
@@ -440,39 +461,36 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_widget_set_margin_start(start_btn, 50);
     gtk_widget_set_margin_end(start_btn, 50);
     gtk_widget_set_halign(start_btn, GTK_ALIGN_FILL);
-    g_signal_connect(start_btn, "clicked", G_CALLBACK(on_start_clicked), app );
-    gtk_box_append(GTK_BOX(main_container), start_btn);
+    g_signal_connect(start_btn, "clicked", G_CALLBACK(on_start_clicked), app);
+    gtk_box_append(GTK_BOX(card), start_btn);
 
-    gtk_window_set_child(GTK_WINDOW(app->window), main_container);
-// Show Logfile Button (FIXED: Added to main_container, not replacing it)
+    // Show Logfile Button
     app->show_logfile_btn = gtk_button_new_with_label("Show Logfile");
     gtk_widget_add_css_class(app->show_logfile_btn, "show-logfile-button");
     gtk_widget_set_margin_start(app->show_logfile_btn, 50);
     gtk_widget_set_margin_end(app->show_logfile_btn, 50);
-    gtk_widget_set_margin_bottom(app->show_logfile_btn, 20);
     gtk_widget_set_halign(app->show_logfile_btn, GTK_ALIGN_FILL);
-    gtk_widget_set_sensitive(app->show_logfile_btn, FALSE);  // DISABLED initially
+    gtk_widget_set_sensitive(app->show_logfile_btn, FALSE);
     g_signal_connect(app->show_logfile_btn, "clicked", G_CALLBACK(on_logfile_clicked), app);
-    gtk_box_append(GTK_BOX(main_container), app->show_logfile_btn);  // FIXED: append to container
+    gtk_box_append(GTK_BOX(card), app->show_logfile_btn);
 
-    // NOW set the child (only once!)
     gtk_window_set_child(GTK_WINDOW(app->window), main_container);
 
     // CSS Styling
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_string(provider,
-        "window { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }"
+        "window { background: linear-gradient(135deg, #000 0%, #764ba2 100%); }"
         ".header-section { color: white; }"
         ".title-label { font-size: 36px; font-weight: bold; }"
-        ".card { background: white; border-radius: 12px; padding: 20px; }"
+        ".card { background: #fff; border-radius: 12px; padding: 20px; }"
         ".section-label { font-weight: bold; margin-bottom: 5px; color: #444; }"
         ".process-list-container { margin-top: 15px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; }"
-        ".gantt-container { margin-top: 15px; border: 1px solid #ddd; border-radius: 5px; background: white; min-height: 150px; }"
+        ".gantt-container { margin-top: 15px; border: 1px solid #ddd; border-radius: 5px; background: white; min-height: 300px; }"
         ".start-button { font-size: 18px; padding: 10px; margin-bottom: 20px; }"
+        ".show-logfile-button { font-size: 18px; padding: 10px; }"
         ".process-row { padding: 10px; border-bottom: 1px solid #eee; }"
     );
     gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(provider), 800);
 
     gtk_window_present(GTK_WINDOW(app->window));
 }
-

@@ -13,13 +13,7 @@ LDFLAGS = $(shell pkg-config --libs gtk4)
 # Source files - removed duplicates (using Interface and Utils with capital letters)
 SRC = main.c \
 	Config/config.c \
-	Algorithms/SJF.c \
-	Algorithms/RoundRobin.c \
-	Algorithms/srt.c \
-	Algorithms/MultilevelStatic.c \
-	Algorithms/fcfs.c \
-	Algorithms/multilevel_aging.c \
-	Algorithms/PreemptivePriority.c \
+	$(wildcard Algorithms/*.c) \
 	Utils/Algorithms.c \
 	Interface/interface.c \
 	Utils/utils.c \

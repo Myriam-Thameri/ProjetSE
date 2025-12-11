@@ -15,6 +15,8 @@ static const char* COLOR_PALETTE[] = {
 };
 static const int COLOR_COUNT = 15;
 
+#define MIN_PIXELS_PER_TIME_UNIT 30
+
 // Add a time slice to the Gantt chart
 void add_gantt_slice(const char* pid, int start, int duration, const char* color) {
     if (slice_count >= MAX_SLICES) {
@@ -57,9 +59,26 @@ const char* get_process_color(const char* pid) {
     return COLOR_PALETTE[hash % COLOR_COUNT];
 }
 
+// Get the required width for the Gantt chart
+static int get_gantt_required_width(void) {
+    if (slice_count == 0) return 400; // Largeur par défaut
+    
+    int total_time = 0;
+    for (int i = 0; i < slice_count; i++) {
+        int end = slices[i].start + slices[i].duration;
+        if (end > total_time) total_time = end;
+    }
+    
+    const int MARGIN = 40;
+    int min_chart_width = total_time * MIN_PIXELS_PER_TIME_UNIT;
+    
+    return min_chart_width + 2 * MARGIN;
+}
+
 // Drawing callback for the Gantt chart
-static void gantt_draw_function(GtkDrawingArea *area, cairo_t *cr,
-                                int width, int height, gpointer data) {
+static void gantt_draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data) {
+    int required_width = get_gantt_required_width();
+    gtk_widget_set_size_request(GTK_WIDGET(area), required_width, 150);
     if (slice_count == 0) {
         // Draw empty state
         cairo_set_source_rgb(cr, 0.7, 0.7, 0.7);
@@ -84,8 +103,13 @@ static void gantt_draw_function(GtkDrawingArea *area, cairo_t *cr,
     const int BAR_HEIGHT = 50;
     const int LABEL_HEIGHT = 30;
     const int TIME_MARKER_HEIGHT = 25;
+
+    // NOUVEAU: Calculer la largeur nécessaire basée sur la largeur minimale par unité
+    int min_chart_width = total_time * MIN_PIXELS_PER_TIME_UNIT;
+    int available_width = width - 2 * MARGIN;
     
-    int chart_width = width - 2 * MARGIN;
+    int chart_width = (min_chart_width > available_width) ? min_chart_width : available_width;
+    
     int chart_top = MARGIN + LABEL_HEIGHT;
     
     // Draw background
@@ -176,10 +200,9 @@ static void gantt_draw_function(GtkDrawingArea *area, cairo_t *cr,
 // Create the Gantt chart widget
 GtkWidget* create_gantt_chart_widget(void) {
     GtkWidget *drawing_area = gtk_drawing_area_new();
-    gtk_widget_set_size_request(drawing_area, -1, 150);
-    
-    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(drawing_area),
-                                   gantt_draw_function, NULL, NULL);
+    //gtk_widget_set_size_request(drawing_area, -1, 150);
+    //gtk_widget_set_hexpand(drawing_area, TRUE); 
+    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(drawing_area), gantt_draw_function, NULL, NULL);
     
     return drawing_area;
 }
