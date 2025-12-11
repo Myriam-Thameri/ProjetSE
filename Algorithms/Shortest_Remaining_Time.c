@@ -5,13 +5,17 @@
  * Licensed under the MIT License
  * See LICENSE file in the project root for full license information.
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../Config/config.h"
 #include "../Config/types.h"
+#include "../Interface/gantt_chart.h"
+#include "../Interface/gantt_chart.h"
 
 void SRT_Algo(Config* config) {
+    clear_gantt_slices();
     int n = config->process_count;
     if (n <= 0) {
         printf("No processes to schedule.\n");
@@ -92,6 +96,7 @@ void SRT_Algo(Config* config) {
         if (shortest == -1) {
             // no ready process => CPU idle
             printf("Tick %d: CPU idle\n", tick);
+            add_gantt_slice("IDLE", tick, 1, "#cccccc");
             tick++;
             continue;
         }
@@ -106,7 +111,8 @@ void SRT_Algo(Config* config) {
         }
 
         printf("Tick %d: Running %s (Remaining %d)\n", tick, p->ID, remaining[shortest]);
-
+        
+        add_gantt_slice(p->ID, tick, 1, NULL);
         // execute one tick
         remaining[shortest]--;
         executed[shortest]++;

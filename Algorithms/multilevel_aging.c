@@ -1,11 +1,14 @@
 /*
  * Simulateur d'Ordonnancement de Processus
- * Multilevel Scheduler with Dynamic Aging + I/O + Gantt Chart
+ * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
+ *
+ * Licensed under the MIT License
+ * See LICENSE file in the project root for full license information.
  */
 
 #include "../Config/types.h"
 #include "../Config/config.h"
-#include "Algorithms.h"
+#include "../Utils/Algorithms.h"
 
 #include <stdio.h>
 #include <stdlib.h>
