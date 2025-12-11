@@ -16,7 +16,6 @@
 #include "../Config/types.h"
 
 #define MAX_FILES 50
-#define MAX_FILENAME_LEN 20
 #define CONFIG_PATH_MAX 256
 
 // DIR_PATH declared as extern to avoid multiple definition - defined in main.c
