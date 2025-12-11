@@ -1,3 +1,11 @@
+/*
+ * Simulateur d'Ordonnancement de Processus
+ * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
+ *
+ * Licensed under the MIT License
+ * See LICENSE file in the project root for full license information.
+ */
+
 #include <stdio.h>     // for printf and perror
 #include <string.h>    // for strcmp, strncpy, strrchr
 #include <dirent.h>    // for listing files in a folder
