@@ -1,6 +1,7 @@
 #include "../Config/types.h"
 #include "../Config/config.h"
-#include "Algorithms.h"
+#include "../Utils/Algorithms.h"
+#include "../Utils/log_file.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,8 +28,8 @@ void apply_aging(PCB* pcbs, int total, int current_time, PCB* running)
 
             p->wait_time = 0;
 
-            printf("Aging: Process %s priority increased to %d\n",
-                p->process.ID, p->process.priority);
+            printf("Aging: Process %s priority increased to %d\n", p->process.ID, p->process.priority);
+            log_print("Aging: Process %s priority increased to %d\n", p->process.ID, p->process.priority);
         }
     }
 }
@@ -43,7 +44,7 @@ void MultilevelAgingScheduler(Config* config)
     for(int i = 0; i < total; i++)
         pcbs[i].wait_time = 0;
 
-    printf("=== Multilevel Scheduler With Aging (Dynamic Priority) ===\n");
+    printf("*** Multilevel Scheduler With Aging (Dynamic Priority) ***\n");
 
     while (finished < total)
     {
@@ -64,8 +65,8 @@ void MultilevelAgingScheduler(Config* config)
             if (next->remaining_time < run_for)
                 run_for = next->remaining_time;
 
-            printf("Time %d-%d: Running %s (priority=%d)\n",
-                time, time + run_for, next->process.ID, next->process.priority);
+            printf("Time %d-%d: Running %s (priority=%d)\n",time, time + run_for, next->process.ID, next->process.priority);
+            log_print("Time %d-%d: Running %s (priority=%d)\n",time, time + run_for, next->process.ID, next->process.priority);
 
             next->remaining_time -= run_for;
             next->wait_time = 0;
@@ -75,13 +76,16 @@ void MultilevelAgingScheduler(Config* config)
                 next->finished = 1;
                 finished++;
                 printf("Process %s finished.\n", next->process.ID);
+                log_print("Process %s finished.\n", next->process.ID);
             }
 
         } else {
             printf("Time %d: CPU idle\n", time);
+            log_print("Time %d: CPU idle\n", time);
             time++;
         }
     }
 
-    printf("=== Scheduler End ===\n");
+    printf("\n*** Scheduler End ***\n");
+    log_print("\n*** Scheduler End ***\n");
 }

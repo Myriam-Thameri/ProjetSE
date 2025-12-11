@@ -1,11 +1,7 @@
-Algorithms/PreemptivePriority.o: Algorithms/PreemptivePriority.c \
- Algorithms/../Config/config.h Algorithms/../Config/types.h \
- Algorithms/../Config/types.h Algorithms/../Utils/Algorithms.h \
- Algorithms/../Utils/../Config/config.h \
- Algorithms/../Utils/../Config/types.h \
- Algorithms/../Interface/gantt_chart.h /usr/include/gtk-4.0/gtk/gtk.h \
- /usr/include/gtk-4.0/gtk/css/gtkcss.h /usr/include/glib-2.0/glib.h \
- /usr/include/glib-2.0/glib/galloca.h /usr/include/glib-2.0/glib/gtypes.h \
+Interface/interface.o: Interface/interface.c \
+ /usr/include/gtk-4.0/gtk/gtk.h /usr/include/gtk-4.0/gtk/css/gtkcss.h \
+ /usr/include/glib-2.0/glib.h /usr/include/glib-2.0/glib/galloca.h \
+ /usr/include/glib-2.0/glib/gtypes.h \
  /usr/lib/x86_64-linux-gnu/glib-2.0/include/glibconfig.h \
  /usr/include/glib-2.0/glib/gmacros.h \
  /usr/include/glib-2.0/glib/gversionmacros.h \
@@ -675,15 +671,14 @@ Algorithms/PreemptivePriority.o: Algorithms/PreemptivePriority.c \
  /usr/include/gtk-4.0/gtk/gtkwidgetpaintable.h \
  /usr/include/gtk-4.0/gtk/gtkwindowcontrols.h \
  /usr/include/gtk-4.0/gtk/gtkwindowgroup.h \
- /usr/include/gtk-4.0/gtk/gtkwindowhandle.h \
- Algorithms/../Utils/log_file.h
-Algorithms/../Config/config.h:
-Algorithms/../Config/types.h:
-Algorithms/../Config/types.h:
-Algorithms/../Utils/Algorithms.h:
-Algorithms/../Utils/../Config/config.h:
-Algorithms/../Utils/../Config/types.h:
-Algorithms/../Interface/gantt_chart.h:
+ /usr/include/gtk-4.0/gtk/gtkwindowhandle.h Interface/../Utils/utils.h \
+ Interface/../Utils/../Interface/interface_utils.h \
+ Interface/../Utils/../Interface/../Config/config.h \
+ Interface/../Utils/../Interface/../Config/types.h \
+ Interface/./interface_utils.h Interface/./gantt_chart.h \
+ Interface/../Config/config.h Interface/../Config/types.h \
+ Interface/../Utils/Algorithms.h Interface/../Utils/../Config/config.h \
+ Interface/../Utils/../Config/types.h Interface/../Utils/log_file.h
 /usr/include/gtk-4.0/gtk/gtk.h:
 /usr/include/gtk-4.0/gtk/css/gtkcss.h:
 /usr/include/glib-2.0/glib.h:
@@ -1398,4 +1393,15 @@ Algorithms/../Interface/gantt_chart.h:
 /usr/include/gtk-4.0/gtk/gtkwindowcontrols.h:
 /usr/include/gtk-4.0/gtk/gtkwindowgroup.h:
 /usr/include/gtk-4.0/gtk/gtkwindowhandle.h:
-Algorithms/../Utils/log_file.h:
+Interface/../Utils/utils.h:
+Interface/../Utils/../Interface/interface_utils.h:
+Interface/../Utils/../Interface/../Config/config.h:
+Interface/../Utils/../Interface/../Config/types.h:
+Interface/./interface_utils.h:
+Interface/./gantt_chart.h:
+Interface/../Config/config.h:
+Interface/../Config/types.h:
+Interface/../Utils/Algorithms.h:
+Interface/../Utils/../Config/config.h:
+Interface/../Utils/../Config/types.h:
+Interface/../Utils/log_file.h:

@@ -1,6 +1,7 @@
 #include "../Config/types.h"
 #include "../Config/config.h"
-#include "Algorithms.h"
+#include "../Utils/Algorithms.h"
+#include "../Utils/log_file.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +15,7 @@ void MultilevelStaticScheduler(Config* config) {
     int finished_processes = 0;
     int total_processes = config->process_count;
     
-    printf("=== Multilevel Static Scheduler Start ===\n");
+    printf("*** Multilevel Static Scheduler Start ***\n");
     
     // Main loop
     while (finished_processes < total_processes) {
@@ -33,6 +34,7 @@ void MultilevelStaticScheduler(Config* config) {
             int run_time = 2; // RR quantum
             if (next->remaining_time < run_time) run_time = next->remaining_time;
             printf("Time %d-%d: |%-4s", time, time+run_time, next->process.ID);
+            log_print("Time %d-%d: |%-4s", time, time+run_time, next->process.ID);
             next->remaining_time -= run_time;
             time += run_time;
             if (next->remaining_time <= 0) {
@@ -41,9 +43,11 @@ void MultilevelStaticScheduler(Config* config) {
             }
         } else {
             printf("Time %d: CPU idle\n", time);
+            log_print("Time %d: CPU idle\n", time);
             time++;
         }
     }
     
-    printf("\n=== Multilevel Static Scheduler End ===\n");
+    printf("\n*** Multilevel Static Scheduler End ***\n");
+    log_print("\n*** Multilevel Static Scheduler End ***\n");
 }

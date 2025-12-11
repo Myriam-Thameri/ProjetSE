@@ -61,3 +61,27 @@ PCB* find_pcb_by_id(PCB* pcb, int count, const char* id) {
     }
     return NULL;
 }
+
+QUEUE remove_specific_process(QUEUE q, const char *ID) {
+    QueueNode *node = q.start;
+    QueueNode *prev = NULL;
+
+    while (node != NULL) {
+        if (strcmp(node->process.ID, ID) == 0) {
+            if (prev == NULL) {
+                q.start = node->next;
+            } else {
+                prev->next = node->next;
+            }
+            if (node == q.end) {
+                q.end = prev;
+            }
+            free(node);
+            q.size--;
+            return q;
+        }
+        prev = node;
+        node = node->next;
+    }
+    return q;  // not found
+}

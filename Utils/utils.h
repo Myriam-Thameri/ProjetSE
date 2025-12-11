@@ -2,6 +2,13 @@
 
 #define UTILS_H
 
-void get_all_files_in_directory(char *dir_path, char files[][20], int *count);
+#include "../Interface/interface_utils.h"
+
+#define CONFIG_DIR "./Config"
+#define MAX_FILES 50
+#define MAX_FILENAME_LEN 256
+
+void scan_config_directory(AppContext *app);
+char **get_algorithms(int *count);
 
 #endif // UTILS_H

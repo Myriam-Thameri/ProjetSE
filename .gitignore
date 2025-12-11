@@ -1,0 +1,7 @@
+#all files.o and .d
+*.o
+*.d
+#the dir output
+output/
+#the .vscode dir
+.vscode/

@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include "./Config/types.h"
 #include "./Config/config.h"
-#include "./Algorithms/Algorithms.h"
+#include "./Utils/Algorithms.h"
 #include "./Utils/utils.h"
 #include "./Interface/interface_utils.h"
 
@@ -43,38 +43,18 @@ char* DIR_PATH = "./Config";
  */
 int main(int argc, char *argv[]){
     
+    AppContext *app_data = g_new0(AppContext, 1);
+    app_data->CFG = g_new0(Config, 1); 
 
-    Config* CFG = malloc(sizeof(Config));
-    char files[MAX_FILES][MAX_FILENAME_LEN];
-    int files_count = 0;
-    get_all_files_in_directory(DIR_PATH , files, &files_count);
-    int config_load_res;
-    printf("Files in directory %s:\n", DIR_PATH);
-    for (int i = 0; i < files_count; i++) {
-        printf("File %d: %s\n", i + 1, files[i]);
-    }
-    GtkApplication *app;
-    int status;
-
-    app = gtk_application_new("org.gtk.TaskScheduler", G_APPLICATION_DEFAULT_FLAGS);
-    g_signal_connect(app, "activate", G_CALLBACK(activate), CFG);
-    status = g_application_run(G_APPLICATION(app), argc, argv);
-    g_object_unref(app);
-
-    free(CFG);
-
-    return status;
-    /* snprintf(CONFIG_FILE_PATH, sizeof(CONFIG_FILE_PATH), "%s/%s", DIR_PATH, "config.txt");
-    printf("Using config file: %s\n", CONFIG_FILE_PATH);
-    config_load_res = load_config(CONFIG_FILE_PATH , CFG); 
+    GtkApplication *app = gtk_application_new("com.example.OSScheduler", G_APPLICATION_DEFAULT_FLAGS);
+    g_signal_connect(app, "activate", G_CALLBACK(activate), app_data);
     
-    if(config_load_res == 0) {
-        printf("Error loading config file.\n");
-        return 1;
-    }else if (config_load_res == 1) {
-        
-    }  */
-    // 3. START GTK APPLICATION
-    // This runs after the user selects '0'
+    int status = g_application_run(G_APPLICATION(app), argc, argv);
+    
+    g_free(app_data->CFG);
+    g_free(app_data);
+    g_object_unref(app);
+    return status;
     
 }
+

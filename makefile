@@ -20,9 +20,11 @@ SRC = main.c \
 	Algorithms/fcfs.c \
 	Algorithms/multilevel_aging.c \
 	Algorithms/PreemptivePriority.c \
-	Algorithms/Algorithms.c \
-	Interface/interface_utils.c \
-	Utils/utils.c
+	Utils/Algorithms.c \
+	Interface/interface.c \
+	Utils/utils.c \
+	Interface/gantt_chart.c \
+	Utils/log_file.c
 
 OBJ = $(SRC:.c=.o)
 DEPS = $(SRC:.c=.d)

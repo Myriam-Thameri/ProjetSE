@@ -671,9 +671,10 @@ main.o: main.c /usr/include/gtk-4.0/gtk/gtk.h \
  /usr/include/gtk-4.0/gtk/gtkwindowcontrols.h \
  /usr/include/gtk-4.0/gtk/gtkwindowgroup.h \
  /usr/include/gtk-4.0/gtk/gtkwindowhandle.h Config/types.h \
- Config/config.h Config/types.h Algorithms/Algorithms.h \
- Algorithms/../Config/config.h Algorithms/../Config/types.h Utils/utils.h \
- Interface/interface_utils.h Interface/../Config/config.h
+ Config/config.h Config/types.h Utils/Algorithms.h \
+ Utils/../Config/config.h Utils/../Config/types.h Utils/utils.h \
+ Utils/../Interface/interface_utils.h \
+ Utils/../Interface/../Config/config.h Interface/interface_utils.h
 /usr/include/gtk-4.0/gtk/gtk.h:
 /usr/include/gtk-4.0/gtk/css/gtkcss.h:
 /usr/include/glib-2.0/glib.h:
@@ -1391,9 +1392,10 @@ main.o: main.c /usr/include/gtk-4.0/gtk/gtk.h \
 Config/types.h:
 Config/config.h:
 Config/types.h:
-Algorithms/Algorithms.h:
-Algorithms/../Config/config.h:
-Algorithms/../Config/types.h:
+Utils/Algorithms.h:
+Utils/../Config/config.h:
+Utils/../Config/types.h:
 Utils/utils.h:
+Utils/../Interface/interface_utils.h:
+Utils/../Interface/../Config/config.h:
 Interface/interface_utils.h:
-Interface/../Config/config.h:
