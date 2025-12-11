@@ -8,6 +8,9 @@
 
 
 
+/* ============================================================================
+   SELECT SHORTEST JOB FIRST
+   ============================================================================ */
 
 PROCESS select_SJF(QUEUE queue) {
     QueueNode *node = queue.start;
@@ -39,8 +42,8 @@ void SJF_Algo(Config *config) {
     char line3[2000] = "";
     char line4[2000] = "";
 
-    QUEUE ready_queue = {0, NULL, NULL};
-    QUEUE io_queue = {0, NULL, NULL};
+    QUEUE ready_queue = {NULL, NULL, 0};
+    QUEUE io_queue = {NULL, NULL, 0};
 
     printf("SJF simulation start\n");
 
@@ -53,6 +56,7 @@ void SJF_Algo(Config *config) {
     while (finished < config->process_count) {
 
         printf("\nTime = %d\n", time);
+        log_print("\nTime = %d\n", time );
 
         /* ---------------------------------------------------------------
            1. PROCESS ARRIVALS
@@ -103,7 +107,7 @@ void SJF_Algo(Config *config) {
             current = select_SJF(ready_queue);
             cpu_busy = 1;
             printf("At time %d: CPU selects %s (SJF)\n", time, current.ID);
-            log_print("At time %d: CPU selects %s (SJF)\n", time, current.ID);
+            log_print("At time %d: CPU selects %s (SJF)\n", time , current.ID)
         }
 
         int cpu_executed = 0;
@@ -184,8 +188,8 @@ void SJF_Algo(Config *config) {
 
         time++;
     }
-    log_print("\n***SJF simulation end***\n");
-    printf("\n***SJF simulation end***\n");
+    
+    log_print("\n***SJF Algorithm Completed ***\n");
     /* =======================================================================
        FINAL ASCII GANTT
        ======================================================================= */

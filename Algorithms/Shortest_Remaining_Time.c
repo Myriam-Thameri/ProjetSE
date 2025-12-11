@@ -1,3 +1,11 @@
+/*
+ * Simulateur d'Ordonnancement de Processus
+ * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
+ *
+ * Licensed under the MIT License
+ * See LICENSE file in the project root for full license information.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,8 +13,11 @@
 #include "../Utils/log_file.h"
 #include "../Config/config.h"
 #include "../Config/types.h"
+#include "../Interface/gantt_chart.h"
+#include "../Interface/gantt_chart.h"
 
 void SRT_Algo(Config* config) {
+    clear_gantt_slices();
     int n = config->process_count;
     if (n <= 0) {
         printf("No processes to schedule.\n");
@@ -88,6 +99,7 @@ void SRT_Algo(Config* config) {
             // no ready process => CPU idle
             printf("Time %d: CPU idle\n", tick);
             log_print("Time %d: CPU idle\n", tick);
+            add_gantt_slice("IDLE", tick, 1, "#cccccc");
             tick++;
             continue;
         }
@@ -103,7 +115,8 @@ void SRT_Algo(Config* config) {
 
         printf("Time %d: Running %s (Remaining %d)\n", tick, p->ID, remaining[shortest]);
         log_print("Time %d: Running %s (Remaining %d)\n", tick, p->ID, remaining[shortest]);
-
+        
+        add_gantt_slice(p->ID, tick, 1, NULL);
         // execute one tick
         remaining[shortest]--;
         executed[shortest]++;

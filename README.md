@@ -78,3 +78,30 @@ PROJETSE
 **end:** pointer on the last node
 
 **size:** number of processes in the queue
+##  License
+
+This project is licensed under the MIT License.  
+See the [LICENSE](LICENSE) file for more details.
+
+### About MIT License
+The MIT License allows:
+- Commercial use
+- Distribution
+- Modification
+- Private use
+
+The only requirement is to include the copyright notice and the license text.
+
+## Authors
+
+- Safa Drissi
+- Myriam Thameri
+- Arij Belmabrouk
+- Amira Rabah
+- Ikram Marzouki
+- Yasmine Hsayri
+- Wassim Lourimi
+
+Supervised by: Mme Yosra Najar  
+Academic Year: 2025–2026  
+Institution: Université Virtuelle de Tunis

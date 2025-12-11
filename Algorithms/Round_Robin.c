@@ -1,14 +1,22 @@
-#include "../Config/types.h"
-#include "../Config/config.h"
-#include "../Utils/Algorithms.h"
-#include "../Utils/log_file.h"
+/*
+ * Simulateur d'Ordonnancement de Processus
+ * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
+ *
+ * Licensed under the MIT License
+ * See LICENSE file in the project root for full license information.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../Config/types.h"
+#include "../Config/config.h"
+#include "../Utils/Algorithms.h"
+#include "../Interface/gantt_chart.h"
+#include "../Utils/log_file.h"
 
-
-void RoundRobin_Algo(Config* config) {
-    
+void RoundRobin_Algo(Config* config, int quantum) {
+    clear_gantt_slices();
     PCB* pcb = initialize_PCB(config);
     int time = 0;
     int finished = 0;
@@ -25,11 +33,8 @@ void RoundRobin_Algo(Config* config) {
     io_queue.size = 0;
     io_queue.start = NULL;
     io_queue.end = NULL;
-
-    int quantum;
-    printf("Enter Quantum Time: ");
-    scanf("%d", &quantum);
     printf("Quantum Time set to %d units\n", quantum);
+    log_print("Quantum Time set to %d units\n", quantum);
     int used_quantum = 0;
 
     printf("PCB initialized\n");
@@ -57,7 +62,7 @@ void RoundRobin_Algo(Config* config) {
                     pcb[i].io_remaining--;
                     printf("At time %d: Process %s executes its IO and it rest : %d\n", time, io_p.ID, pcb[i].io_remaining);
                     log_print("At time %d: Process %s executes its IO and it rest : %d\n", time, io_p.ID, pcb[i].io_remaining);
-
+                    
                     if (pcb[i].io_remaining == 0) {
                         io_queue = remove_process_from_queue(io_queue);
                         pcb[i].in_io = 0;
@@ -83,7 +88,7 @@ void RoundRobin_Algo(Config* config) {
                     pcb[i].remaining_time--;
                     used_quantum++;
                     cpu_executed = 1;
-                    
+                    add_gantt_slice(p.ID, time, 1, NULL);
                     printf("At time %d: Process %s executs\n", time, p.ID);
                     log_print("At time %d: Process %s executs\n", time, p.ID);
                     
@@ -138,6 +143,7 @@ void RoundRobin_Algo(Config* config) {
         
         // CPU idle
         if (!cpu_executed) {
+            add_gantt_slice("IDLE", time, 1, "#cccccc");
             strcat(line1, "--");
             strcat(line2, "   ");
             strcat(line3, "--");
