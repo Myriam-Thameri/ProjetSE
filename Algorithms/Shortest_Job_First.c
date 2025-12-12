@@ -1,48 +1,12 @@
-/*
- * Simulateur d'Ordonnancement de Processus
- * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
- *
- * Licensed under the MIT License
- * See LICENSE file in the project root for full license information.
- */
-
 #include "../Config/types.h"
 #include "../Config/config.h"
 #include "../Utils/Algorithms.h"
-#include "../Interface/gantt_chart.h"
-
+#include "../Utils/log_file.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* ============================================================================
-   QUEUE HELPERS (CRUCIAL FIX)
-   ============================================================================ */
 
-// remove the specific process (by ID) from queue
-QUEUE remove_specific_process(QUEUE q, const char *ID) {
-    QueueNode *node = q.start;
-    QueueNode *prev = NULL;
-
-    while (node != NULL) {
-        if (strcmp(node->process.ID, ID) == 0) {
-            if (prev == NULL) {
-                q.start = node->next;
-            } else {
-                prev->next = node->next;
-            }
-            if (node == q.end) {
-                q.end = prev;
-            }
-            free(node);
-            q.size--;
-            return q;
-        }
-        prev = node;
-        node = node->next;
-    }
-    return q;  // not found
-}
 
 /* ============================================================================
    SELECT SHORTEST JOB FIRST
@@ -92,6 +56,7 @@ void SJF_Algo(Config *config) {
     while (finished < config->process_count) {
 
         printf("\nTime = %d\n", time);
+        log_print("\nTime = %d\n", time );
 
         /* ---------------------------------------------------------------
            1. PROCESS ARRIVALS
@@ -101,6 +66,7 @@ void SJF_Algo(Config *config) {
 
             if (p.arrival_time == time && !pcb[i].finished && !pcb[i].in_io) {
                 printf("At time %d: Process %s arrived\n", time, p.ID);
+                log_print("At time %d: Process %s arrived\n", time, p.ID);
                 ready_queue = add_process_to_queue(ready_queue, p);
             }
         }
@@ -116,12 +82,12 @@ void SJF_Algo(Config *config) {
 
                     pcb[i].io_remaining--;
 
-                    printf("At time %d: Process %s executes IO (%d left)\n",
-                           time, io_p.ID, pcb[i].io_remaining);
+                    printf("At time %d: Process %s executes IO (%d left)\n", time, io_p.ID, pcb[i].io_remaining);
+                    log_print("At time %d: Process %s executes IO (%d left)\n", time, io_p.ID, pcb[i].io_remaining);
 
                     if (pcb[i].io_remaining == 0) {
-                        printf("At time %d: Process %s IO finished\n",
-                               time, io_p.ID);
+                        printf("At time %d: Process %s IO finished\n",time, io_p.ID);
+                        log_print("At time %d: Process %s IO finished\n",time, io_p.ID);
 
                         pcb[i].in_io = 0;
                         pcb[i].io_index++;
@@ -141,6 +107,7 @@ void SJF_Algo(Config *config) {
             current = select_SJF(ready_queue);
             cpu_busy = 1;
             printf("At time %d: CPU selects %s (SJF)\n", time, current.ID);
+            log_print("At time %d: CPU selects %s (SJF)\n", time , current.ID);
         }
 
         int cpu_executed = 0;
@@ -159,6 +126,7 @@ void SJF_Algo(Config *config) {
                     cpu_executed = 1;
 
                     printf("At time %d: %s executes\n", time, current.ID);
+                    log_print("At time %d: %s executes\n", time, current.ID);
 
                     add_gantt_slice(current.ID, time, 1, NULL);
 
@@ -175,6 +143,7 @@ void SJF_Algo(Config *config) {
                             current.io_operations[pcb[i].io_index].start_time) {
 
                         printf("At time %d: %s starts IO\n", time, current.ID);
+                        log_print("At time %d: %s starts IO\n", time, current.ID);
 
                         pcb[i].in_io = 1;
                         pcb[i].io_remaining =
@@ -190,6 +159,7 @@ void SJF_Algo(Config *config) {
                     /* ---- PROCESS FINISHED ---- */
                     if (pcb[i].remaining_time == 0) {
                         printf("At time %d: %s finishes\n", time, current.ID);
+                        log_print("At time %d: %s finishes\n", time, current.ID);
 
                         pcb[i].finished = 1;
                         finished++;
@@ -218,7 +188,8 @@ void SJF_Algo(Config *config) {
 
         time++;
     }
-
+    
+    log_print("\n***SJF Algorithm Completed ***\n");
     /* =======================================================================
        FINAL ASCII GANTT
        ======================================================================= */

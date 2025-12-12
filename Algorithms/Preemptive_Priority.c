@@ -12,6 +12,7 @@
 #include "../Config/types.h"
 #include "../Utils/Algorithms.h"
 #include "../Interface/gantt_chart.h"
+#include "../Utils/log_file.h"
 
 #define MAX_QUEUE 256
 
@@ -88,6 +89,8 @@ static void process_io_queue(Queue *ioq, Queue *readyq, int time) {
         p->io_remaining = 0;
         q_enqueue(readyq, p);
         printf("t=%d: %s completes IO and becomes READY\n", time, p->process.ID);
+        log_print("t=%d: %s completes IO and becomes READY\n", time, p->process.ID);
+
     }
 }
 
@@ -134,6 +137,7 @@ void run_priority_preemptive(Config *config) {
             if (next) {
                 running = next;
                 printf("%s starts running\n", running->process.ID);
+                log_print("%s starts running\n", running->process.ID);
             }
         }
         
@@ -143,6 +147,7 @@ void run_priority_preemptive(Config *config) {
             if (higher) {
                 if (higher->process.priority < running->process.priority) {
                     printf("%s preempted by %s\n", running->process.ID, higher->process.ID);
+                    log_print("%s preempted by %s\n", running->process.ID, higher->process.ID);
                     q_enqueue(&readyq, running);
                     running = higher;
                 } else {
@@ -158,8 +163,8 @@ void run_priority_preemptive(Config *config) {
                 // Will need IO after this execution
                 if (io_device_busy) {
                     // IO device busy - cannot execute
-                    printf("%s would trigger IO but device BUSY - skips execution\n", 
-                           running->process.ID);
+                    printf("%s would trigger IO but device BUSY - skips execution\n", running->process.ID);
+                    log_print("%s would trigger IO but device BUSY - skips execution\n", running->process.ID);
                     q_enqueue(&readyq, running);
                     running = NULL;
                     // CPU is idle this time unit - add idle slice
@@ -167,12 +172,14 @@ void run_priority_preemptive(Config *config) {
                 } else {
                     // Execute then enter IO
                     printf("%s executes (will enter IO after)\n", running->process.ID);
+                    log_print("%s executes (will enter IO after)\n", running->process.ID);
                     add_gantt_slice(running->process.ID, time, 1, NULL);
                     running->remaining_time--;
                     running->executed_time++;
                     
                     if (running->remaining_time <= 0) {
                         printf("t=%d: %s FINISHED\n", time + 1, running->process.ID);
+                        log_print("t=%d: %s FINISHED\n", time + 1, running->process.ID);
                         running->finished = 1;
                         running = NULL;
                     } else {
@@ -183,20 +190,22 @@ void run_priority_preemptive(Config *config) {
                         running->in_io = 1;
                         q_enqueue(&ioq, running);
                         io_device_busy = 1;
-                        printf("t=%d: %s enters IO for %d units\n", 
-                               time + 1, running->process.ID, io_op->duration);
+                        printf("t=%d: %s enters IO for %d units\n", time + 1, running->process.ID, io_op->duration);
+                        log_print("t=%d: %s enters IO for %d units\n", time + 1, running->process.ID, io_op->duration);
                         running = NULL;
                     }
                 }
             } else {
                 // Normal execution - ADD GANTT SLICE HERE
                 printf("%s executes\n", running->process.ID);
+                log_print("%s executes\n", running->process.ID);
                 add_gantt_slice(running->process.ID, time, 1, NULL);
                 running->remaining_time--;
                 running->executed_time++;
                 
                 if (running->remaining_time <= 0) {
                     printf("t=%d: %s FINISHED\n", time + 1, running->process.ID);
+                    log_print("t=%d: %s FINISHED\n", time + 1, running->process.ID);
                     running->finished = 1;
                     running = NULL;
                 }
@@ -205,10 +214,13 @@ void run_priority_preemptive(Config *config) {
             // CPU idle - ADD IDLE SLICE
             if (io_device_busy) {
                 printf("CPU idle (IO device busy)\n");
+                log_print("CPU idle (IO device busy)\n");
             } else if (!q_empty(&readyq)) {
                 printf("CPU idle (processes in ready queue)\n");
+                log_print("CPU idle (processes in ready queue)\n");
             } else {
                 printf("CPU idle\n");
+                log_print("CPU idle\n");
             }
             add_gantt_slice("IDLE", time, 1, "#cccccc");
         }
@@ -238,6 +250,7 @@ void run_priority_preemptive(Config *config) {
     }
 
     printf("\n--- Simulation End at t=%d ---\n", time);
+    log_print("\n--- Priority Preemptive Algorithm Completed ***\n\n");
     
     // Print summary
     printf("\nProcess Summary:\n");

@@ -1,3 +1,7 @@
+
+#the dir output
+output/
+#the .vscode dir
 # Compiled object files
 *.o
 # Dependency files

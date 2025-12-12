@@ -1,41 +1,60 @@
 CC = gcc
+
+# Project Name
+TARGET = program
+
 # Generate dependency files (.d) for header tracking: -MMD -MP
-CFLAGS = -Wall -Wextra -g -MMD -MP
+# CFLAGS includes the GTK Header paths and warning flags
+CFLAGS = -Wall -Wextra -g -MMD -MP $(shell pkg-config --cflags gtk4)
 
-# Add GTK4 flags
-GTK_FLAGS = $(shell pkg-config --cflags --libs gtk4)
+# LDFLAGS includes the GTK Library files
+LDFLAGS = $(shell pkg-config --libs gtk4)
 
-SRC = \
-Config/config.c \
-Algorithms/Shortest_Job_First.c \
-Algorithms/Round_Robin.c \
-Algorithms/Shortest_Remaining_Time.c \
-Algorithms/Multilevel_Static.c \
-Algorithms/First_In_First_Out.c \
-Algorithms/Multilevel_Aging.c \
-Algorithms/Preemptive_Priority.c \
-Utils/Algorithms.c \
-Interface/Interface.c \
-Interface/gantt_chart.c \
-Interface/interface_utils.c \
-Utils/get_algorithms_names.c
+# Source files - removed duplicates (using Interface and Utils with capital letters)
+SRC = main.c \
+	Config/config.c \
+	$(wildcard Algorithms/*.c) \
+	Utils/Algorithms.c \
+	Interface/interface.c \
+	Utils/utils.c \
+	Interface/gantt_chart.c \
+	Utils/log_file.c
 
 OBJ = $(SRC:.c=.o)
 DEPS = $(SRC:.c=.d)
 
+# Main build target
 program: $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ) -o program $(GTK_FLAGS)
+	@echo "Linking $(TARGET)..."
+	$(CC) $(CFLAGS) $(OBJ) -o $(TARGET) $(LDFLAGS)
+	@echo "Build complete! Run with: make run"
 
-# Include generated dependency files (ignore missing ones on first run)
+# Include generated dependency files
 -include $(DEPS)
 
+# Compilation rule
 %.o: %.c
-	$(CC) $(CFLAGS) $(GTK_FLAGS) -c $< -o $@
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -c $< -o $@
 
-.PHONY: clean run
+.PHONY: clean run all
+
+all: clean $(TARGET)
 
 clean:
-	rm -f $(OBJ) $(DEPS) program
+	@echo "Cleaning build artifacts..."
+	rm -f $(OBJ) $(DEPS) $(TARGET)
+	@echo "Clean complete!"
 
-run: program
-	./program
+run: $(TARGET)
+	@echo "Running $(TARGET)..."
+	./$(TARGET)
+
+# Optional: Print variables for debugging
+debug:
+	@echo "CC: $(CC)"
+	@echo "CFLAGS: $(CFLAGS)"
+	@echo "LDFLAGS: $(LDFLAGS)"
+	@echo "SRC: $(SRC)"
+	@echo "OBJ: $(OBJ)"
+	@echo "DEPS: $(DEPS)"

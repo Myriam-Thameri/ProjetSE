@@ -187,5 +187,3 @@ static void on_submit_clicked(GtkWidget *button, gpointer data) {
         return;
     }
 }
-
-
