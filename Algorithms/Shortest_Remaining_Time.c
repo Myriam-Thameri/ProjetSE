@@ -18,6 +18,8 @@
 
 void SRT_Algo(Config* config) {
     clear_gantt_slices();
+    clear_io_slices();
+    
     int n = config->process_count;
     if (n <= 0) {
         printf("No processes to schedule.\n");
@@ -25,18 +27,19 @@ void SRT_Algo(Config* config) {
     }
 
     // Allocate state arrays
-    int *remaining = malloc(sizeof(int) * n);    // remaining CPU time
-    int *executed = malloc(sizeof(int) * n);     // how many CPU ticks executed so far
-    int *next_io = malloc(sizeof(int) * n);      // index of next IO operation for each process
-    int *blocked = malloc(sizeof(int) * n);      // remaining block time (I/O), 0 if not blocked
-    int *finished = malloc(sizeof(int) * n);     // 1 if finished
-    int *started = malloc(sizeof(int) * n);      // 1 if ever started
-    int *start_time = malloc(sizeof(int) * n);   // first tick it got CPU
-    int *end_time = malloc(sizeof(int) * n);     // completion tick (end)
-    int *response_time = malloc(sizeof(int) * n);// response (first scheduled - arrival)
+    int *remaining = malloc(sizeof(int) * n);
+    int *executed = malloc(sizeof(int) * n);
+    int *next_io = malloc(sizeof(int) * n);
+    int *blocked = malloc(sizeof(int) * n);
+    int *finished = malloc(sizeof(int) * n);
+    int *started = malloc(sizeof(int) * n);
+    int *start_time = malloc(sizeof(int) * n);
+    int *end_time = malloc(sizeof(int) * n);
+    int *response_time = malloc(sizeof(int) * n);
+    int *io_started_this_tick = malloc(sizeof(int) * n);  // NEW: track if I/O just started
 
     if (!remaining || !executed || !next_io || !blocked || !finished ||
-        !started || !start_time || !end_time || !response_time) {
+        !started || !start_time || !end_time || !response_time || !io_started_this_tick) {
         fprintf(stderr, "Memory allocation failed in SRT_Algo\n");
         exit(1);
     }
@@ -54,12 +57,12 @@ void SRT_Algo(Config* config) {
         start_time[i] = -1;
         end_time[i] = -1;
         response_time[i] = -1;
+        io_started_this_tick[i] = 0;
         total_exec += config->processes[i].execution_time;
         for (int j = 0; j < config->processes[i].io_count; ++j)
             total_io += config->processes[i].io_operations[j].duration;
     }
 
-    // Safety max ticks (upper bound): all execution + all IO + some margin
     int max_ticks = total_exec + total_io + 1000;
     int processes_left = n;
     int tick = 0;
@@ -67,36 +70,38 @@ void SRT_Algo(Config* config) {
     printf("=== Running SRT Algorithm (preemptive) with I/O ===\n");
 
     while (processes_left > 0 && tick < max_ticks) {
-        // 1) decrement blocked timers (I/O progress). If becomes 0, process becomes ready next selection.
+        // 1) Decrement blocked timers (I/O progress) - but skip if just started
         for (int i = 0; i < n; ++i) {
-            if (blocked[i] > 0) {
+            if (blocked[i] > 0 && !io_started_this_tick[i]) {
                 blocked[i]--;
                 if (blocked[i] == 0) {
-                    // process finished I/O and will be eligible for CPU
-                    printf("Time %d: Process %s finished I/O and is READY again (remaining %d)\n", tick, config->processes[i].ID, remaining[i]);
-                    log_print("Time %d: Process %s finished I/O and is READY again (remaining %d)\n", tick, config->processes[i].ID, remaining[i]);
+                    printf("Time %d: Process %s finished I/O and is READY again (remaining %d)\n", 
+                           tick, config->processes[i].ID, remaining[i]);
+                    log_print("Time %d: Process %s finished I/O and is READY again (remaining %d)\n", 
+                             tick, config->processes[i].ID, remaining[i]);
                 }
             }
+            io_started_this_tick[i] = 0;  // Reset flag
         }
 
-        // 2) select the ready process with the shortest remaining time
+        // 2) Select the ready process with the shortest remaining time
         int shortest = -1;
         for (int i = 0; i < n; ++i) {
             if (finished[i]) continue;
-            if (blocked[i] > 0) continue;                         // in I/O
-            if (config->processes[i].arrival_time > tick) continue; // not arrived yet
+            if (blocked[i] > 0) continue;
+            if (config->processes[i].arrival_time > tick) continue;
             if (remaining[i] <= 0) continue;
 
             if (shortest == -1
                 || remaining[i] < remaining[shortest]
-                || (remaining[i] == remaining[shortest] && config->processes[i].arrival_time < config->processes[shortest].arrival_time)
-               ) {
+                || (remaining[i] == remaining[shortest] && 
+                    config->processes[i].arrival_time < config->processes[shortest].arrival_time)) {
                 shortest = i;
             }
         }
 
         if (shortest == -1) {
-            // no ready process => CPU idle
+            // CPU idle
             printf("Time %d: CPU idle\n", tick);
             log_print("Time %d: CPU idle\n", tick);
             add_gantt_slice("IDLE", tick, 1, "#cccccc");
@@ -117,49 +122,49 @@ void SRT_Algo(Config* config) {
         log_print("Time %d: Running %s (Remaining %d)\n", tick, p->ID, remaining[shortest]);
         
         add_gantt_slice(p->ID, tick, 1, NULL);
-        // execute one tick
+        
+        // Execute one tick
         remaining[shortest]--;
         executed[shortest]++;
 
-        // 4) Check if this executed tick triggers an I/O operation
+        // 4) Check if process finished
+        if (remaining[shortest] <= 0) {
+            finished[shortest] = 1;
+            end_time[shortest] = tick + 1;
+            processes_left--;
+            printf("Time %d: Process %s FINISHED\n", tick + 1, p->ID);
+            log_print("Time %d: Process %s FINISHED\n", tick + 1, p->ID);
+            tick++;
+            continue;
+        }
+
+        // 5) Check if this executed tick triggers an I/O operation
         if (next_io[shortest] < p->io_count) {
             IO_OPERATION *io = &p->io_operations[next_io[shortest]];
-            // io->start_time is in CPU-time units relative to process execution
+            
             if (executed[shortest] == io->start_time) {
-                // If process finished exactly at same tick (remaining <=0), prefer finish.
-                if (remaining[shortest] > 0) {
-                    // send to blocked (I/O)
-                    blocked[shortest] = io->duration;
-                    next_io[shortest]++; // consume this IO
-                    printf("Time %d: Process %s goes to I/O for %d ticks (will be blocked now)\n", tick, p->ID, io->duration);
-                    log_print("Time %d: Process %s goes to I/O for %d ticks (will be blocked now)\n", tick, p->ID, io->duration);
-                    // advance tick (we consider I/O blocking begins immediately after this tick)
-                    tick++;
-                    continue; // next loop iteration: blocked timers will decrement at start
-                } else {
-                    // remaining == 0 and an IO would start exactly when process finished:
-                    // we'll mark as finished below; do not block.
-                    next_io[shortest]++; // skip IO since process finished
-                }
+                // Send to I/O
+                blocked[shortest] = io->duration;
+                next_io[shortest]++;
+                io_started_this_tick[shortest] = 1;  // Mark that I/O just started
+                
+                // Add I/O slice starting at next tick
+                add_io_slice(p->ID, tick + 1, io->duration, NULL, "I/O");
+                
+                printf("Time %d: Process %s goes to I/O for %d ticks\n", 
+                       tick + 1, p->ID, io->duration);
+                log_print("Time %d: Process %s goes to I/O for %d ticks\n", 
+                         tick + 1, p->ID, io->duration);
             }
         }
 
-        // 5) If process finished by consuming this CPU tick
-        if (remaining[shortest] <= 0) {
-            finished[shortest] = 1;
-            end_time[shortest] = tick + 1; // completes at end of this tick
-            processes_left--;
-            printf("Time %d: Process %s FINISHED\n", tick, p->ID);
-            log_print("Time %d: Process %s FINISHED\n", tick, p->ID);
-        }
-
-        // advance time
+        // Advance time
         tick++;
     }
 
     if (tick >= max_ticks) {
-        printf("Error: Simulation exceeded time limit (max_ticks=%d). There may be a bug (deadlock / never-unblocked I/O).\n", max_ticks);
-        log_print("Error: Simulation exceeded time limit (max_ticks=%d). There may be a bug (deadlock / never-unblocked I/O).\n", max_ticks);
+        printf("Error: Simulation exceeded time limit (max_ticks=%d).\n", max_ticks);
+        log_print("Error: Simulation exceeded time limit (max_ticks=%d).\n", max_ticks);
     }
 
     // Print summary
@@ -189,12 +194,11 @@ void SRT_Algo(Config* config) {
     printf("\n*** Short Remaining Time Finished ***\n");
     log_print("\n*** Short Remaining Time Finished ***\n");
 
-
     printf("\nAverage Turnaround Time: %.2f\n", avg_turn);
     printf("Average Waiting Time: %.2f\n", avg_wait);
     printf("Average Response Time: %.2f\n", avg_resp);
 
-    // free memory
+    // Free memory
     free(remaining);
     free(executed);
     free(next_io);
@@ -204,4 +208,5 @@ void SRT_Algo(Config* config) {
     free(start_time);
     free(end_time);
     free(response_time);
+    free(io_started_this_tick);
 }

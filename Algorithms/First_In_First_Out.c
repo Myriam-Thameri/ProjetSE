@@ -103,10 +103,11 @@ void FCFS_Algo(Config* config) {
                     ready = remove_process_from_queue(ready);
                     current_pcb->in_io = 1;
                     current_pcb->io_remaining = p.io_operations[current_pcb->io_index].duration;
+                    
                     ioq = add_process_to_queue(ioq, p);
                     printf("[t=%d] %s → starts I/O (duration=%d)\n", time, p.ID,
                            p.io_operations[current_pcb->io_index].duration);
-
+                    add_io_slice(p.ID, time, p.io_operations[current_pcb->io_index].duration, NULL, "I/O");
                     // Check if there's another process ready to execute
                     front = ready.start;
                     if (front) {
@@ -120,7 +121,6 @@ void FCFS_Algo(Config* config) {
                 // Execute current process if available
                 if (current_pcb) {
                     strcpy(executing_now, current_pcb->process.ID);
-                    
                     current_pcb->executed_time++;
                     current_pcb->remaining_time--;
                     printf("[t=%d] CPU → %s (executed=%d, remaining=%d)\n", 
@@ -142,7 +142,8 @@ void FCFS_Algo(Config* config) {
         if (strcmp(current_executing, executing_now) != 0) {
             // Process switched, save the previous slice
             if (strlen(current_executing) > 0) {
-                add_gantt_slice(current_executing, slice_start, 1, NULL);
+                int duration = time - slice_start;
+                add_gantt_slice(current_executing, slice_start, duration, NULL);
             }
             
             // Start tracking new process
@@ -155,7 +156,8 @@ void FCFS_Algo(Config* config) {
     
     /* ----------------- Save final Gantt slice ----------------- */
     if (strlen(current_executing) > 0) {
-        add_gantt_slice(current_executing, slice_start, 1, NULL);
+        int duration = time - slice_start;
+        add_gantt_slice(current_executing, slice_start, duration, NULL);
     }
 
     /* ----------------- AFFICHAGE FINAL ----------------- */

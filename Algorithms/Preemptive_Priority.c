@@ -98,6 +98,7 @@ static void process_io_queue(Queue *ioq, Queue *readyq, int time) {
 void run_priority_preemptive(Config *config) {
     if (!config || config->process_count <= 0) return;
     clear_gantt_slices();
+    clear_io_slices();
     int count = config->process_count;
     PCB pcbs[MAX_QUEUE]; 
     Queue readyq, ioq;
@@ -190,6 +191,7 @@ void run_priority_preemptive(Config *config) {
                         running->in_io = 1;
                         q_enqueue(&ioq, running);
                         io_device_busy = 1;
+                        add_io_slice(running->process.ID, time + 1, io_op->duration, NULL, "I/O");
                         printf("t=%d: %s enters IO for %d units\n", time + 1, running->process.ID, io_op->duration);
                         log_print("t=%d: %s enters IO for %d units\n", time + 1, running->process.ID, io_op->duration);
                         running = NULL;
