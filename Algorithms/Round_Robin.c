@@ -6,13 +6,15 @@
  * See LICENSE file in the project root for full license information.
  */
 
-#include "../Config/types.h"
-#include "../Config/config.h"
-#include "../Utils/Algorithms.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../Config/types.h"
+#include "../Config/config.h"
+#include "../Utils/Algorithms.h"
 #include "../Interface/gantt_chart.h"
+#include "../Utils/log_file.h"
+
 void RoundRobin_Algo(Config* config, int quantum) {
     clear_gantt_slices();
     PCB* pcb = initialize_PCB(config);
@@ -32,6 +34,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
     io_queue.start = NULL;
     io_queue.end = NULL;
     printf("Quantum Time set to %d units\n", quantum);
+    log_print("Quantum Time set to %d units\n", quantum);
     int used_quantum = 0;
 
     printf("PCB initialized\n");
@@ -45,6 +48,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
             
             if (p.arrival_time == time && !pcb[i].finished && !pcb[i].in_io) { // add to ready queue
                 printf("At time %d: Process %s arrived and added to ready queue\n", time, p.ID);
+                log_print("At time %d: Process %s arrived and added to ready queue\n", time, p.ID);
                 ready_queue = add_process_to_queue(ready_queue, p);
             }
         }
@@ -57,12 +61,14 @@ void RoundRobin_Algo(Config* config, int quantum) {
                 if (strcmp(pcb[i].process.ID, io_p.ID) == 0 && pcb[i].in_io) {
                     pcb[i].io_remaining--;
                     printf("At time %d: Process %s executes its IO and it rest : %d\n", time, io_p.ID, pcb[i].io_remaining);
+                    log_print("At time %d: Process %s executes its IO and it rest : %d\n", time, io_p.ID, pcb[i].io_remaining);
                     
                     if (pcb[i].io_remaining == 0) {
                         io_queue = remove_process_from_queue(io_queue);
                         pcb[i].in_io = 0;
                         pcb[i].io_index++;
                         printf("At time %d: Process %s finished IO & added back to ready queue\n", time, io_p.ID);
+                        log_print("At time %d: Process %s finished IO & added back to ready queue\n", time, io_p.ID);
                         ready_queue = add_process_to_queue(ready_queue, io_p);
                     }
                     break;
@@ -84,6 +90,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
                     cpu_executed = 1;
                     add_gantt_slice(p.ID, time, 1, NULL);
                     printf("At time %d: Process %s executs\n", time, p.ID);
+                    log_print("At time %d: Process %s executs\n", time, p.ID);
                     
                     strcat(line1, "--");
                     strcat(line2, "   ");
@@ -93,6 +100,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
                     if (p.io_count > 0 && pcb[i].io_index < p.io_count && pcb[i].executed_time == p.io_operations[pcb[i].io_index].start_time) {
                         
                         printf("At time %d: Process %s starts IO\n", time, p.ID);
+                        log_print("At time %d: Process %s starts IO\n", time, p.ID);
                         pcb[i].in_io = 1;
                         pcb[i].io_remaining = p.io_operations[pcb[i].io_index].duration;
                         ready_queue = remove_process_from_queue(ready_queue);
@@ -105,6 +113,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
                     //  if finished
                     else if (pcb[i].remaining_time == 0) {
                         printf("At time %d: Process %s finishes\n", time, p.ID);
+                        log_print("At time %d: Process %s finishes\n", time, p.ID);
                         pcb[i].finished = 1;
                         finished++;
                         ready_queue = remove_process_from_queue(ready_queue);
@@ -117,6 +126,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
                     // quantum finished
                     else if (used_quantum >= quantum) {
                         printf("At time %d: Process %s quantum finish\n", time, p.ID);
+                        log_print("At time %d: Process %s quantum finish\n", time, p.ID);
                         ready_queue = remove_process_from_queue(ready_queue);
                         ready_queue = add_process_to_queue(ready_queue, p);
                         used_quantum = 0;
@@ -142,7 +152,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
         
         time++;
     }
-    
+    log_print("*** Round Robin Algorithm Completed ***\n\n");
     printf("\nGantt Chart \n");
     printf("%s\n", line1);
     printf("%s\n", line2);

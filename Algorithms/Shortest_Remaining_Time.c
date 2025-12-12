@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../Utils/Algorithms.h"
+#include "../Utils/log_file.h"
 #include "../Config/config.h"
 #include "../Config/types.h"
 #include "../Interface/gantt_chart.h"
@@ -71,8 +73,8 @@ void SRT_Algo(Config* config) {
                 blocked[i]--;
                 if (blocked[i] == 0) {
                     // process finished I/O and will be eligible for CPU
-                    printf("Tick %d: Process %s finished I/O and is READY again (remaining %d)\n",
-                           tick, config->processes[i].ID, remaining[i]);
+                    printf("Time %d: Process %s finished I/O and is READY again (remaining %d)\n", tick, config->processes[i].ID, remaining[i]);
+                    log_print("Time %d: Process %s finished I/O and is READY again (remaining %d)\n", tick, config->processes[i].ID, remaining[i]);
                 }
             }
         }
@@ -95,7 +97,8 @@ void SRT_Algo(Config* config) {
 
         if (shortest == -1) {
             // no ready process => CPU idle
-            printf("Tick %d: CPU idle\n", tick);
+            printf("Time %d: CPU idle\n", tick);
+            log_print("Time %d: CPU idle\n", tick);
             add_gantt_slice("IDLE", tick, 1, "#cccccc");
             tick++;
             continue;
@@ -110,7 +113,8 @@ void SRT_Algo(Config* config) {
             response_time[shortest] = tick - p->arrival_time;
         }
 
-        printf("Tick %d: Running %s (Remaining %d)\n", tick, p->ID, remaining[shortest]);
+        printf("Time %d: Running %s (Remaining %d)\n", tick, p->ID, remaining[shortest]);
+        log_print("Time %d: Running %s (Remaining %d)\n", tick, p->ID, remaining[shortest]);
         
         add_gantt_slice(p->ID, tick, 1, NULL);
         // execute one tick
@@ -127,8 +131,8 @@ void SRT_Algo(Config* config) {
                     // send to blocked (I/O)
                     blocked[shortest] = io->duration;
                     next_io[shortest]++; // consume this IO
-                    printf("Tick %d: Process %s goes to I/O for %d ticks (will be blocked now)\n",
-                           tick, p->ID, io->duration);
+                    printf("Time %d: Process %s goes to I/O for %d ticks (will be blocked now)\n", tick, p->ID, io->duration);
+                    log_print("Time %d: Process %s goes to I/O for %d ticks (will be blocked now)\n", tick, p->ID, io->duration);
                     // advance tick (we consider I/O blocking begins immediately after this tick)
                     tick++;
                     continue; // next loop iteration: blocked timers will decrement at start
@@ -145,7 +149,8 @@ void SRT_Algo(Config* config) {
             finished[shortest] = 1;
             end_time[shortest] = tick + 1; // completes at end of this tick
             processes_left--;
-            printf("Tick %d: Process %s FINISHED\n", tick, p->ID);
+            printf("Time %d: Process %s FINISHED\n", tick, p->ID);
+            log_print("Time %d: Process %s FINISHED\n", tick, p->ID);
         }
 
         // advance time
@@ -154,6 +159,7 @@ void SRT_Algo(Config* config) {
 
     if (tick >= max_ticks) {
         printf("Error: Simulation exceeded time limit (max_ticks=%d). There may be a bug (deadlock / never-unblocked I/O).\n", max_ticks);
+        log_print("Error: Simulation exceeded time limit (max_ticks=%d). There may be a bug (deadlock / never-unblocked I/O).\n", max_ticks);
     }
 
     // Print summary
@@ -179,6 +185,10 @@ void SRT_Algo(Config* config) {
     double avg_turn = sum_turn / n;
     double avg_wait = sum_wait / n;
     double avg_resp = sum_resp / n;
+
+    printf("\n*** Short Remaining Time Finished ***\n");
+    log_print("\n*** Short Remaining Time Finished ***\n");
+
 
     printf("\nAverage Turnaround Time: %.2f\n", avg_turn);
     printf("Average Waiting Time: %.2f\n", avg_wait);

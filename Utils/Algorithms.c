@@ -1,10 +1,3 @@
-/*
- * Simulateur d'Ordonnancement de Processus
- * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
- *
- * Licensed under the MIT License
- * See LICENSE file in the project root for full license information.
- */
 
 #include "../Config/types.h"
 #include "../Config/config.h"
@@ -30,8 +23,12 @@ PCB* initialize_PCB(Config* config) {
 }
 
 QUEUE add_process_to_queue(QUEUE ready_queue, PROCESS p){
-    
+
     QueueNode* new_node = malloc(sizeof(QueueNode));
+    if (new_node == NULL) {
+        // Memory allocation failed, return unchanged queue
+        return ready_queue;
+    }
     new_node->process = p;
     new_node->next = NULL;
 
@@ -50,14 +47,19 @@ QUEUE add_process_to_queue(QUEUE ready_queue, PROCESS p){
 QUEUE remove_process_from_queue(QUEUE ready_queue){
     // Queue is empty nothing to remove retirn as is
     if (ready_queue.size == 0) {
-        return ready_queue; 
+        return ready_queue;
     }
     // Remove the first node
     QueueNode* temp = ready_queue.start;
     ready_queue.start = ready_queue.start->next;
     free(temp);
     ready_queue.size--;
-    
+
+    // If queue is now empty, set end to NULL
+    if (ready_queue.size == 0) {
+        ready_queue.end = NULL;
+    }
+
     return ready_queue;
 }
 
@@ -68,4 +70,28 @@ PCB* find_pcb_by_id(PCB* pcb, int count, const char* id) {
         }
     }
     return NULL;
+}
+
+QUEUE remove_specific_process(QUEUE q, const char *ID) {
+    QueueNode *node = q.start;
+    QueueNode *prev = NULL;
+
+    while (node != NULL) {
+        if (strcmp(node->process.ID, ID) == 0) {
+            if (prev == NULL) {
+                q.start = node->next;
+            } else {
+                prev->next = node->next;
+            }
+            if (node == q.end) {
+                q.end = prev;
+            }
+            free(node);
+            q.size--;
+            return q;
+        }
+        prev = node;
+        node = node->next;
+    }
+    return q;  // not found
 }
