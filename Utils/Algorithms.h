@@ -40,6 +40,8 @@ QUEUE add_process_to_queue(QUEUE ready_queue, PROCESS p); // add a node in the e
 
 QUEUE remove_process_from_queue(QUEUE ready_queue); //remove the first process in the queue and return the updated queue
 
+QUEUE remove_specific_process(QUEUE q, const char *ID) ;
+
 void FCFS_Algo(Config* config);
 
 void MultilevelStaticScheduler(Config* config, int quantum);

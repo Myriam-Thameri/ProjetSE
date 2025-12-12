@@ -3,26 +3,45 @@ This project simulates multitasking scheduling of processes, based on a scheduli
 
 ## Project Structure 
 
-PROJETSE
-│
-├── Algorithms
-│ ├── Algorithms.h #Shared functions and types are definition
-│ ├── RoundRobin.c
-| ├── PremptivePriority.c
-| ├── SJF.c
-| ├── multilevel_aging.c
-│
-├── Config
-│ ├── config.c    # Implementation of the config parser and related functions
-│ ├── config.h    # Definition of CONFIG type and functions declarations
-│ ├── config.txt # Declation of all processes infos
-│ └── types.h     # Main data structures used in the project
-│
-├── Dockerfile  
-├── main.c        
-├── makefile
-├── program
-└── README.md
+PROJETSE<br>
+│<br>
+├── Algorithms<br>
+│ ├── First_In_First_Out<br>
+│ ├── Round_Robin.c<br>
+| ├── Premptive_Priority.c<br>
+| ├── Shortest_Job_First.c<br>
+| ├── Shortest_Remaining_Time.c<br>
+| ├── Multilevel_Static.c<br>
+| ├── Multilevel_Aging.c<br>
+│<br>
+├── Config<br>
+│ ├── config.c                 # Implementation of the config parser and related functions<br>
+│ ├── config.h                 # Definition of CONFIG type and functions declarations<br>
+│ ├── config.txt               # Declation of all processes infos<br>
+│ └── types.h                  # Main data structures used in the project<br>
+│<br>
+├── Interface<br>
+│ ├── gantt_chart.h            # Definition of the gant diagram function<br>
+│ ├── gantt_chart.c            # Impelmentation of functions allowing gant diagram drawing<br>
+│ ├── interface_utils.h        # Definition of AppContext type and interface related functions declarations<br>
+│ └── interface.c              # Main functionnalities used to build the interface<br>
+│<br>
+├── output                     # Folder to store the log files<br>
+│ └── {algorithm used}_{configfile used}.log      # Pattern of the log filename<br>
+│<br>
+├── Utils<br>
+│ ├── Algorithms.h            # Definition of shared functions and types used in algorithms implementation<br>
+│ ├── Algorithms.c            # Impelmentation of shared functions used by algorithms files<br>
+│ ├── utils.h                 # Declarations of additional functions used to build the scheduler app<br>
+│ ├── utils.c                 # Impelmentation of functions defined in utils.h<br>
+│ ├── log_file.h              # Definition of function used to build the logfile logic<br>
+│ └── log_file.c              # Implementation of the logfile logic<br>
+│<br>
+├── Dockerfile  <br>
+├── main.c        <br>
+├── makefile<br>
+├── program<br>
+└── README.md<br>
 
 ## Data structure 
 
@@ -78,6 +97,13 @@ PROJETSE
 **end:** pointer on the last node
 
 **size:** number of processes in the queue
+
+## Input/Output Operations Policy : FIFO
+
+## Priority Management 
+
+The process having the highest priority is the lost prioritized one.
+
 ##  License
 
 This project is licensed under the MIT License.  

@@ -18,6 +18,9 @@ typedef struct {
     GtkWidget *gantt_widget; 
     GtkWidget *show_logfile_btn;
     Config *CFG;
+    GtkWidget *quantum_box;   
+    GtkWidget *quantum_entry;
+    int quantum;   
     char config_filename[124];
     char log_filename[256];
     char available_files[MAX_FILES][MAX_FILENAME_LEN];
@@ -30,6 +33,7 @@ static void on_start_clicked(GtkButton *button, gpointer user_data);
 static void on_add_algorithm_clicked(GtkButton *button, gpointer user_data);
 static void on_algorithm_file_added(GObject *source, GAsyncResult *result, gpointer user_data);
 static void on_algorithm_selected(GObject *dropdown, GParamSpec *pspec, gpointer user_data);
+static gboolean algorithm_requires_quantum(const char *algorithm);
 static void on_browse_clicked(GtkWidget *button, gpointer user_data);
 static void on_browse_row_activated(GtkListBox *box, GtkListBoxRow *row, gpointer user_data) ;
 void handle_config_submission(AppContext *app, const char *filename);

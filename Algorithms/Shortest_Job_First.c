@@ -107,7 +107,7 @@ void SJF_Algo(Config *config) {
             current = select_SJF(ready_queue);
             cpu_busy = 1;
             printf("At time %d: CPU selects %s (SJF)\n", time, current.ID);
-            log_print("At time %d: CPU selects %s (SJF)\n", time , current.ID)
+            log_print("At time %d: CPU selects %s (SJF)\n", time , current.ID);
         }
 
         int cpu_executed = 0;

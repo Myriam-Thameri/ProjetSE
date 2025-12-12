@@ -23,8 +23,12 @@ PCB* initialize_PCB(Config* config) {
 }
 
 QUEUE add_process_to_queue(QUEUE ready_queue, PROCESS p){
-    
+
     QueueNode* new_node = malloc(sizeof(QueueNode));
+    if (new_node == NULL) {
+        // Memory allocation failed, return unchanged queue
+        return ready_queue;
+    }
     new_node->process = p;
     new_node->next = NULL;
 
@@ -43,14 +47,19 @@ QUEUE add_process_to_queue(QUEUE ready_queue, PROCESS p){
 QUEUE remove_process_from_queue(QUEUE ready_queue){
     // Queue is empty nothing to remove retirn as is
     if (ready_queue.size == 0) {
-        return ready_queue; 
+        return ready_queue;
     }
     // Remove the first node
     QueueNode* temp = ready_queue.start;
     ready_queue.start = ready_queue.start->next;
     free(temp);
     ready_queue.size--;
-    
+
+    // If queue is now empty, set end to NULL
+    if (ready_queue.size == 0) {
+        ready_queue.end = NULL;
+    }
+
     return ready_queue;
 }
 
