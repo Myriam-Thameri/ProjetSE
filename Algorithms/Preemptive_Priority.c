@@ -1,9 +1,9 @@
 /*
- * Simulateur d'Ordonnancement de Processus
+ * Simulateur d'Ordonnancement de Processus - Priority Preemptive
+ * Adapted to use linked list QUEUE data structure
  * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
  *
  * Licensed under the MIT License
- * See LICENSE file in the project root for full license information.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,61 +14,50 @@
 #include "../Interface/gantt_chart.h"
 #include "../Utils/log_file.h"
 
-#define MAX_QUEUE 256
-
-/* ------------------- QUEUE ------------------- */
-typedef struct {
-    PCB* arr[MAX_QUEUE];
-    int front;
-    int rear;
-} Queue;
-
-static void q_init(Queue *q) { q->front = q->rear = 0; }
-static int q_empty(Queue *q) { return q->front == q->rear; }
-static void q_enqueue(Queue *q, PCB *x) { 
-    if (q->rear < MAX_QUEUE) {
-        q->arr[q->rear++] = x;
-    }
-}
-static PCB* q_dequeue(Queue *q) { 
-    return q_empty(q) ? NULL : q->arr[q->front++];
+static int is_queue_empty(QUEUE q) {
+    return q.size == 0;
 }
 
-/* pick highest priority among ready items (remove from queue) */
-static PCB* pick_highest_priority_and_remove(Queue *q, int time) {
-    int idx = -1;
-
-    for (int i = q->front; i < q->rear; ++i) {
-        PCB *c = q->arr[i];
+/* Pick highest priority process from queue and remove it */
+static PCB* pick_highest_priority_and_remove(QUEUE *q, PCB *pcb, int count, int time) {
+    if (is_queue_empty(*q)) return NULL;
+    
+    QueueNode *node = q->start;
+    QueueNode *best_node = NULL;
+    PCB *best_pcb = NULL;
+    
+    // Find the highest priority process
+    while (node != NULL) {
+        PCB *current_pcb = find_pcb_by_id(pcb, count, node->process.ID);
         
-        if (c->in_io) continue; 
-        if (c->process.arrival_time <= time && !c->finished) {
-            if (idx == -1 ||
-                c->process.priority < q->arr[idx]->process.priority ||
-                (c->process.priority == q->arr[idx]->process.priority &&
-                 c->process.arrival_time < q->arr[idx]->process.arrival_time)) {
-                idx = i;
+        if (current_pcb && !current_pcb->in_io && !current_pcb->finished &&
+            current_pcb->process.arrival_time <= time) {
+            
+            if (best_pcb == NULL ||
+                current_pcb->process.priority < best_pcb->process.priority ||
+                (current_pcb->process.priority == best_pcb->process.priority &&
+                 current_pcb->process.arrival_time < best_pcb->process.arrival_time)) {
+                best_pcb = current_pcb;
+                best_node = node;
             }
         }
+        node = node->next;
     }
-
-    if (idx == -1) return NULL;
-
-    PCB *res = q->arr[idx];
-    for (int j = idx; j < q->rear - 1; ++j)
-        q->arr[j] = q->arr[j + 1];
-    q->rear--;
-
-    return res;
+    
+    if (best_pcb) {
+        // Remove this process from queue
+        *q = remove_specific_process(*q, best_pcb->process.ID);
+    }
+    
+    return best_pcb;
 }
 
-/* Check if a process needs IO at the END of current time unit */
+/* Check if a process needs IO after current execution */
 static int needs_io_after_current_execution(PCB *p) {
     if (p->io_index >= p->process.io_count) return 0;
     
     IO_OPERATION *io_op = &p->process.io_operations[p->io_index];
     
-    // Check if after this execution, the executed_time will reach IO start time
     if (p->executed_time + 1 == io_op->start_time) {
         return 1;
     }
@@ -76,47 +65,60 @@ static int needs_io_after_current_execution(PCB *p) {
     return 0;
 }
 
-/* Process IO queue */
-static void process_io_queue(Queue *ioq, Queue *readyq, int time) {
-    if (q_empty(ioq)) return;
+/* Process IO queue - handle first process in IO */
+static void process_io_queue(QUEUE *ioq, QUEUE *readyq, PCB *pcb, int count, int time) {
+    if (is_queue_empty(*ioq)) return;
 
-    PCB *p = ioq->arr[ioq->front];
+    // Get first process in IO queue
+    PCB *p = find_pcb_by_id(pcb, count, ioq->start->process.ID);
+    if (!p) return;
+    
+    // Add IO slice for the CURRENT time unit (when IO is actually happening)
+    
     p->io_remaining--;
 
     if (p->io_remaining <= 0) {
-        q_dequeue(ioq);
+        // Remove from IO queue and add to ready queue
+        *ioq = remove_process_from_queue(*ioq);
         p->in_io = 0;
         p->io_remaining = 0;
-        q_enqueue(readyq, p);
+        *readyq = add_process_to_queue(*readyq, p->process);
+        
         printf("t=%d: %s completes IO and becomes READY\n", time, p->process.ID);
         log_print("t=%d: %s completes IO and becomes READY\n", time, p->process.ID);
+    }
+}
 
+/* Update wait times for processes in ready queue */
+static void update_wait_times(QUEUE *readyq, PCB *pcb, int count, PCB *running, int time) {
+    QueueNode *node = readyq->start;
+    
+    while (node != NULL) {
+        PCB *p = find_pcb_by_id(pcb, count, node->process.ID);
+        
+        if (p && p->process.arrival_time <= time && p != running && !p->finished) {
+            p->wait_time++;
+        }
+        node = node->next;
     }
 }
 
 /* ------------------- MAIN SIMULATION ------------------- */
 void run_priority_preemptive(Config *config) {
     if (!config || config->process_count <= 0) return;
+    
     clear_gantt_slices();
     clear_io_slices();
+    
     int count = config->process_count;
-    PCB pcbs[MAX_QUEUE]; 
-    Queue readyq, ioq;
+    PCB *pcbs = initialize_PCB(config);
+    
+    QUEUE readyq = {NULL, NULL, 0};
+    QUEUE ioq = {NULL, NULL, 0};
 
-    q_init(&readyq);
-    q_init(&ioq);
-
-    /* Initialize PCBs */
+    /* Add all processes to ready queue */
     for (int i = 0; i < count; i++) {
-        pcbs[i].process = config->processes[i];
-        pcbs[i].remaining_time = pcbs[i].process.execution_time;
-        pcbs[i].executed_time = 0;
-        pcbs[i].io_index = 0;
-        pcbs[i].io_remaining = 0;
-        pcbs[i].finished = 0;
-        pcbs[i].in_io = 0;
-        pcbs[i].wait_time = 0;
-        q_enqueue(&readyq, &pcbs[i]);
+        readyq = add_process_to_queue(readyq, pcbs[i].process);
     }
 
     PCB *running = NULL;
@@ -124,17 +126,18 @@ void run_priority_preemptive(Config *config) {
     int io_device_busy = 0;
 
     printf("--- Simulation Start ---\n");
+    log_print("--- Priority Preemptive Algorithm Started ***\n\n");
 
     while (1) {
         printf("\nt=%d: ", time);
 
         /* STEP 1 — Process IO queue first */
-        process_io_queue(&ioq, &readyq, time);
-        io_device_busy = !q_empty(&ioq);
+        process_io_queue(&ioq, &readyq, pcbs, count, time);
+        io_device_busy = !is_queue_empty(ioq);
 
         /* STEP 2 — Schedule if CPU is free */
         if (!running) {
-            PCB *next = pick_highest_priority_and_remove(&readyq, time);
+            PCB *next = pick_highest_priority_and_remove(&readyq, pcbs, count, time);
             if (next) {
                 running = next;
                 printf("%s starts running\n", running->process.ID);
@@ -142,36 +145,31 @@ void run_priority_preemptive(Config *config) {
             }
         }
         
-        /* STEP 3 — Check preemption (if we have a running process) */
+        /* STEP 3 — Check preemption */
         if (running) {
-            PCB *higher = pick_highest_priority_and_remove(&readyq, time);
+            PCB *higher = pick_highest_priority_and_remove(&readyq, pcbs, count, time);
             if (higher) {
                 if (higher->process.priority < running->process.priority) {
                     printf("%s preempted by %s\n", running->process.ID, higher->process.ID);
                     log_print("%s preempted by %s\n", running->process.ID, higher->process.ID);
-                    q_enqueue(&readyq, running);
+                    readyq = add_process_to_queue(readyq, running->process);
                     running = higher;
                 } else {
-                    q_enqueue(&readyq, higher);
+                    readyq = add_process_to_queue(readyq, higher->process);
                 }
             }
         }
 
         /* STEP 4 — Execute or handle IO */
         if (running) {
-            // Check if this execution will trigger IO
             if (needs_io_after_current_execution(running)) {
-                // Will need IO after this execution
                 if (io_device_busy) {
-                    // IO device busy - cannot execute
                     printf("%s would trigger IO but device BUSY - skips execution\n", running->process.ID);
                     log_print("%s would trigger IO but device BUSY - skips execution\n", running->process.ID);
-                    q_enqueue(&readyq, running);
+                    readyq = add_process_to_queue(readyq, running->process);
                     running = NULL;
-                    // CPU is idle this time unit - add idle slice
                     add_gantt_slice("IDLE", time, 1, "#cccccc");
                 } else {
-                    // Execute then enter IO
                     printf("%s executes (will enter IO after)\n", running->process.ID);
                     log_print("%s executes (will enter IO after)\n", running->process.ID);
                     add_gantt_slice(running->process.ID, time, 1, NULL);
@@ -184,21 +182,24 @@ void run_priority_preemptive(Config *config) {
                         running->finished = 1;
                         running = NULL;
                     } else {
-                        // Enter IO
+                        // Process will enter IO in the NEXT time unit
                         IO_OPERATION *io_op = &running->process.io_operations[running->io_index];
                         running->io_index++;
                         running->io_remaining = io_op->duration;
                         running->in_io = 1;
-                        q_enqueue(&ioq, running);
+                        ioq = add_process_to_queue(ioq, running->process);
                         io_device_busy = 1;
-                        add_io_slice(running->process.ID, time + 1, io_op->duration, NULL, "I/O");
-                        printf("t=%d: %s enters IO for %d units\n", time + 1, running->process.ID, io_op->duration);
-                        log_print("t=%d: %s enters IO for %d units\n", time + 1, running->process.ID, io_op->duration);
+                        // IMPORTANT: IO starts at time+1, not overlapping with current execution
+                        // Don't add IO slice here - it will be added in next iteration when IO actually processes
+                        printf("t=%d: %s will enter IO for %d units starting at t=%d\n", 
+                               time + 1, running->process.ID, io_op->duration, time + 1);
+                        log_print("t=%d: %s will enter IO for %d units starting at t=%d\n", 
+                                  time + 1, running->process.ID, io_op->duration, time + 1);
+                        add_io_slice(running->process.ID, time + 1,io_op->duration, NULL, "I/O");
                         running = NULL;
                     }
                 }
             } else {
-                // Normal execution - ADD GANTT SLICE HERE
                 printf("%s executes\n", running->process.ID);
                 log_print("%s executes\n", running->process.ID);
                 add_gantt_slice(running->process.ID, time, 1, NULL);
@@ -213,11 +214,10 @@ void run_priority_preemptive(Config *config) {
                 }
             }
         } else {
-            // CPU idle - ADD IDLE SLICE
             if (io_device_busy) {
                 printf("CPU idle (IO device busy)\n");
                 log_print("CPU idle (IO device busy)\n");
-            } else if (!q_empty(&readyq)) {
+            } else if (!is_queue_empty(readyq)) {
                 printf("CPU idle (processes in ready queue)\n");
                 log_print("CPU idle (processes in ready queue)\n");
             } else {
@@ -228,12 +228,7 @@ void run_priority_preemptive(Config *config) {
         }
 
         /* STEP 5 — Update wait times */
-        for (int i = readyq.front; i < readyq.rear; ++i) {
-            PCB *p = readyq.arr[i];
-            if (p->process.arrival_time <= time && p != running && !p->finished) {
-                p->wait_time++;
-            }
-        }
+        update_wait_times(&readyq, pcbs, count, running, time);
 
         /* STEP 6 — Check for completion */
         int all_done = 1;
@@ -244,7 +239,7 @@ void run_priority_preemptive(Config *config) {
             }
         }
         
-        if (all_done && !running && q_empty(&readyq) && q_empty(&ioq)) {
+        if (all_done && !running && is_queue_empty(readyq) && is_queue_empty(ioq)) {
             break;
         }
 
@@ -259,5 +254,13 @@ void run_priority_preemptive(Config *config) {
     printf("Process\tWait Time\n");
     for (int i = 0; i < count; i++) {
         printf("%s\t%d\n", pcbs[i].process.ID, pcbs[i].wait_time);
+    }
+    
+    // Clean up queues
+    while (!is_queue_empty(readyq)) {
+        readyq = remove_process_from_queue(readyq);
+    }
+    while (!is_queue_empty(ioq)) {
+        ioq = remove_process_from_queue(ioq);
     }
 }
