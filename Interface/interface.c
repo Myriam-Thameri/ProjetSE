@@ -373,7 +373,13 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
 
 void activate(GtkApplication *gtk_app, gpointer user_data) {
     AppContext *app = (AppContext *)user_data;
-    app->config_filename[0] = '\0';
+    
+    if (app->config_filename[0] != '\0'){
+        handle_config_submission(app, app->config_filename);
+    }else{
+        app->config_filename[0] = '\0';
+    }
+
     int counts = 0;
     char **algorithms = get_algorithms(&counts); 
 
@@ -461,7 +467,7 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     GtkWidget *input_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     
     app->config_entry = gtk_entry_new();
-    gtk_entry_set_placeholder_text(GTK_ENTRY(app->config_entry), "Type filename (e.g. data.txt)...");
+
     gtk_widget_set_hexpand(app->config_entry, TRUE);
     gtk_box_append(GTK_BOX(input_box), app->config_entry);
 
@@ -554,4 +560,10 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(provider), 800);
 
     gtk_window_present(GTK_WINDOW(app->window));
+
+    if (app->config_filename[0] != '\0'){
+        handle_config_submission(app, app->config_filename);
+    }else{
+        app->config_filename[0] = '\0';
+    }
 }
