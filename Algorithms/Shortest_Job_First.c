@@ -31,6 +31,7 @@ PROCESS select_SJF(QUEUE queue) {
 
 void SJF_Algo(Config *config) {
     clear_gantt_slices();
+    clear_io_slices();
 
     PCB *pcb = initialize_PCB(config);
     int time = 0;
@@ -50,13 +51,10 @@ void SJF_Algo(Config *config) {
     PROCESS current;
     int cpu_busy = 0;
 
-    /* =======================================================================
-       MAIN LOOP
-       ======================================================================= */
     while (finished < config->process_count) {
 
         printf("\nTime = %d\n", time);
-        log_print("\nTime = %d\n", time );
+        log_print("\nTime = %d\n", time);
 
         /* ---------------------------------------------------------------
            1. PROCESS ARRIVALS
@@ -72,7 +70,7 @@ void SJF_Algo(Config *config) {
         }
 
         /* ---------------------------------------------------------------
-           2. IO MANAGEMENT
+           2. IO MANAGEMENT - Process I/O BEFORE selecting/executing CPU
            --------------------------------------------------------------- */
         if (io_queue.size > 0) {
             PROCESS io_p = io_queue.start->process;
@@ -80,20 +78,23 @@ void SJF_Algo(Config *config) {
             for (int i = 0; i < config->process_count; i++) {
                 if (strcmp(io_p.ID, pcb[i].process.ID) == 0 && pcb[i].in_io) {
 
-                    pcb[i].io_remaining--;
+                    // Only decrement if io_remaining > 1, or if this is the last unit
+                    if (pcb[i].io_remaining > 0) {
+                        pcb[i].io_remaining--;
 
-                    printf("At time %d: Process %s executes IO (%d left)\n", time, io_p.ID, pcb[i].io_remaining);
-                    log_print("At time %d: Process %s executes IO (%d left)\n", time, io_p.ID, pcb[i].io_remaining);
+                        printf("At time %d: Process %s executes IO (%d left)\n", time, io_p.ID, pcb[i].io_remaining);
+                        log_print("At time %d: Process %s executes IO (%d left)\n", time, io_p.ID, pcb[i].io_remaining);
 
-                    if (pcb[i].io_remaining == 0) {
-                        printf("At time %d: Process %s IO finished\n",time, io_p.ID);
-                        log_print("At time %d: Process %s IO finished\n",time, io_p.ID);
+                        if (pcb[i].io_remaining == 0) {
+                            printf("At time %d: Process %s IO finished\n", time, io_p.ID);
+                            log_print("At time %d: Process %s IO finished\n", time, io_p.ID);
 
-                        pcb[i].in_io = 0;
-                        pcb[i].io_index++;
+                            pcb[i].in_io = 0;
+                            pcb[i].io_index++;
 
-                        io_queue = remove_specific_process(io_queue, io_p.ID);
-                        ready_queue = add_process_to_queue(ready_queue, io_p);
+                            io_queue = remove_specific_process(io_queue, io_p.ID);
+                            ready_queue = add_process_to_queue(ready_queue, io_p);
+                        }
                     }
                     break;
                 }
@@ -107,7 +108,7 @@ void SJF_Algo(Config *config) {
             current = select_SJF(ready_queue);
             cpu_busy = 1;
             printf("At time %d: CPU selects %s (SJF)\n", time, current.ID);
-            log_print("At time %d: CPU selects %s (SJF)\n", time , current.ID);
+            log_print("At time %d: CPU selects %s (SJF)\n", time, current.ID);
         }
 
         int cpu_executed = 0;
@@ -136,26 +137,6 @@ void SJF_Algo(Config *config) {
                     strcat(line3, "--");
                     strcat(line4, "   ");
 
-                    /* ---- IO START ---- */
-                    if (current.io_count > 0 &&
-                        pcb[i].io_index < current.io_count &&
-                        pcb[i].executed_time ==
-                            current.io_operations[pcb[i].io_index].start_time) {
-
-                        printf("At time %d: %s starts IO\n", time, current.ID);
-                        log_print("At time %d: %s starts IO\n", time, current.ID);
-
-                        pcb[i].in_io = 1;
-                        pcb[i].io_remaining =
-                            current.io_operations[pcb[i].io_index].duration;
-
-                        ready_queue = remove_specific_process(ready_queue, current.ID);
-                        io_queue = add_process_to_queue(io_queue, current);
-
-                        cpu_busy = 0;
-                        break;
-                    }
-
                     /* ---- PROCESS FINISHED ---- */
                     if (pcb[i].remaining_time == 0) {
                         printf("At time %d: %s finishes\n", time, current.ID);
@@ -165,6 +146,32 @@ void SJF_Algo(Config *config) {
                         finished++;
 
                         ready_queue = remove_specific_process(ready_queue, current.ID);
+                        cpu_busy = 0;
+                        break;
+                    }
+
+                    /* ---- IO START ---- (Check AFTER finish check) */
+                    if (current.io_count > 0 &&
+                        pcb[i].io_index < current.io_count &&
+                        pcb[i].executed_time ==
+                            current.io_operations[pcb[i].io_index].start_time) {
+
+                        printf("At time %d: %s starts IO\n", time + 1, current.ID);
+                        log_print("At time %d: %s starts IO\n", time + 1, current.ID);
+                        
+                        // Add I/O slice starting at time + 1
+                        add_io_slice(current.ID, time + 1,
+                            current.io_operations[pcb[i].io_index].duration,
+                            NULL, "I/O");
+
+                        pcb[i].in_io = 1;
+                        // Set io_remaining to duration + 1, because it will be decremented 
+                        // immediately in the next iteration
+                        pcb[i].io_remaining = current.io_operations[pcb[i].io_index].duration + 1;
+
+                        ready_queue = remove_specific_process(ready_queue, current.ID);
+                        io_queue = add_process_to_queue(io_queue, current);
+
                         cpu_busy = 0;
                         break;
                     }
@@ -190,9 +197,7 @@ void SJF_Algo(Config *config) {
     }
     
     log_print("\n***SJF Algorithm Completed ***\n");
-    /* =======================================================================
-       FINAL ASCII GANTT
-       ======================================================================= */
+    
     printf("\nGantt Chart\n");
     printf("%s\n", line1);
     printf("%s\n", line2);
