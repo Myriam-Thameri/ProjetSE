@@ -111,3 +111,32 @@ void free_config(Config *cfg)
     if (!cfg) return;
     free(cfg);
 }
+
+int save_config(char* path, Config* cfg) {
+    if (!path || !cfg) return 0;
+
+    FILE *file = fopen(path, "w");
+    if (!file) return 0;
+
+    fprintf(file, "#config file\n\n");
+    fprintf(file, "process_count = %d\n\n", cfg->process_count);
+
+    for (int i = 0; i < cfg->process_count; i++) {
+        PROCESS *p = &cfg->processes[i];
+        fprintf(file, "[process%d]\n", i);
+        fprintf(file, "ID = %s\n", p->ID);
+        fprintf(file, "arrival_time = %d\n", p->arrival_time);
+        fprintf(file, "execution_time = %d\n", p->execution_time);
+        fprintf(file, "priority = %d\n", p->priority);
+        fprintf(file, "io_count = %d\n\n", p->io_count);
+
+        for (int j = 0; j < p->io_count; j++) {
+            fprintf(file, "[process%d_io%d]\n", i, j);
+            fprintf(file, "start_time = %d\n", p->io_operations[j].start_time);
+            fprintf(file, "duration = %d\n\n", p->io_operations[j].duration);
+        }
+    }
+
+    fclose(file);
+    return 1;
+}

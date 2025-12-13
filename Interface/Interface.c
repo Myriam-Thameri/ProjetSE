@@ -444,7 +444,10 @@ static void on_add_process_clicked(GtkButton *button, gpointer user_data) {
     GtkWidget *label = gtk_label_new(new_process->ID);
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), label);
-    gtk_list_box_append(GTK_LIST_BOX(app->process_list_box), row);
+    if (app->editor_process_list_box)
+        gtk_list_box_append(GTK_LIST_BOX(app->editor_process_list_box), row);
+    else
+        gtk_list_box_append(GTK_LIST_BOX(app->process_list_box), row);
 
     gtk_widget_show(row);
 }
@@ -485,7 +488,7 @@ void on_edit_config_clicked(GtkButton *button, gpointer user_data)
     gtk_widget_set_vexpand(list_scroller, TRUE);
 
     GtkWidget *process_list = create_process_list_editor(app);
-    app->process_list_box = process_list;
+    app->editor_process_list_box = process_list;
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(list_scroller),
                                   process_list);
     gtk_box_append(GTK_BOX(content), list_scroller);
@@ -507,15 +510,19 @@ void on_edit_config_clicked(GtkButton *button, gpointer user_data)
     g_signal_connect(add_btn, "clicked", G_CALLBACK(on_add_process_clicked), app);
 
     GtkWidget *apply_btn = gtk_button_new_with_label("Apply");
+    GtkWidget *delete_btn = gtk_button_new_with_label("Delete");
     GtkWidget *close_btn = gtk_button_new_with_label("Close");
 
     gtk_box_append(GTK_BOX(footer), apply_btn);
+    gtk_box_append(GTK_BOX(footer), delete_btn);
     gtk_box_append(GTK_BOX(footer), close_btn);
 
     gtk_box_append(GTK_BOX(main_box), footer);
 
     g_signal_connect(apply_btn, "clicked",
                     G_CALLBACK(on_apply_process_changes), app);
+    g_signal_connect(delete_btn, "clicked",
+                    G_CALLBACK(on_delete_process_clicked), app);
 
     g_signal_connect_swapped(close_btn, "clicked",
                             G_CALLBACK(gtk_window_close), dialog);
@@ -525,9 +532,9 @@ void on_edit_config_clicked(GtkButton *button, gpointer user_data)
 
 static void refresh_process_list(AppContext *app)
 {
-    if (!app || !app->CFG || !app->process_list_box) return;
+    if (!app || !app->CFG || !app->editor_process_list_box) return;
 
-    GtkListBox *box = GTK_LIST_BOX(app->process_list_box);
+    GtkListBox *box = GTK_LIST_BOX(app->editor_process_list_box);
 
     /* Remove all rows */
     GtkWidget *row;
@@ -596,13 +603,33 @@ static void on_apply_process_changes(GtkButton *button,
 
     refresh_process_list(app);
 
-    gtk_list_box_select_row(
-        GTK_LIST_BOX(app->process_list_box),
-        gtk_list_box_get_row_at_index(
-            GTK_LIST_BOX(app->process_list_box),
-            app->selected_process
-        )
-    );
+    if (app->editor_process_list_box) {
+        gtk_list_box_select_row(
+            GTK_LIST_BOX(app->editor_process_list_box),
+            gtk_list_box_get_row_at_index(
+                GTK_LIST_BOX(app->editor_process_list_box),
+                app->selected_process
+            )
+        );
+    }
+
+    /* Persist changes to the config file if one is loaded, then reload */
+    if (app->config_filename && app->config_filename[0] != '\0') {
+        char full_path[512];
+        if (strstr(app->config_filename, "/") == NULL) {
+            snprintf(full_path, sizeof(full_path), "%s/%s", CONFIG_DIR, app->config_filename);
+        } else {
+            snprintf(full_path, sizeof(full_path), "%s", app->config_filename);
+        }
+
+        if (save_config(full_path, app->CFG)) {
+            g_print("Config saved to %s\n", full_path);
+            /* Reload the config to ensure main window reflects file contents */
+            handle_config_submission(app, app->config_filename);
+        } else {
+            g_print("Failed to save config to %s\n", full_path);
+        }
+    }
 }
 
 
@@ -930,5 +957,57 @@ gtk_box_append(GTK_BOX(card), params_row);
         handle_config_submission(app, app->config_filename);
     }else{
         app->config_filename[0] = '\0';
+    }
+}
+
+static void on_delete_process_clicked(GtkButton *button, gpointer user_data)
+{
+    AppContext *app = (AppContext *)user_data;
+    if (!app || !app->CFG) return;
+    if (app->selected_process < 0 || app->selected_process >= app->CFG->process_count) return;
+
+    int idx = app->selected_process;
+
+    /* Shift processes left to overwrite the deleted one */
+    for (int i = idx; i < app->CFG->process_count - 1; i++) {
+        app->CFG->processes[i] = app->CFG->processes[i + 1];
+    }
+    app->CFG->process_count--;
+
+    /* Adjust selection */
+    if (app->CFG->process_count == 0) {
+        app->selected_process = -1;
+        gtk_editable_set_text(GTK_EDITABLE(app->id_entry), "");
+        gtk_editable_set_text(GTK_EDITABLE(app->arrival_entry), "");
+        gtk_editable_set_text(GTK_EDITABLE(app->exec_entry), "");
+        gtk_editable_set_text(GTK_EDITABLE(app->priority_entry), "");
+        gtk_editable_set_text(GTK_EDITABLE(app->io_entry), "");
+    } else {
+        if (app->selected_process >= app->CFG->process_count)
+            app->selected_process = app->CFG->process_count - 1;
+    }
+
+    /* Update editor list */
+    refresh_process_list(app);
+    if (app->editor_process_list_box && app->selected_process >= 0) {
+        GtkListBoxRow *row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(app->editor_process_list_box), app->selected_process);
+        if (row) gtk_list_box_select_row(GTK_LIST_BOX(app->editor_process_list_box), row);
+    }
+
+    /* Persist and reload main UI if a config file is loaded */
+    if (app->config_filename && app->config_filename[0] != '\0') {
+        char full_path[512];
+        if (strstr(app->config_filename, "/") == NULL) {
+            snprintf(full_path, sizeof(full_path), "%s/%s", CONFIG_DIR, app->config_filename);
+        } else {
+            snprintf(full_path, sizeof(full_path), "%s", app->config_filename);
+        }
+
+        if (save_config(full_path, app->CFG)) {
+            g_print("Config saved to %s\n", full_path);
+            handle_config_submission(app, app->config_filename);
+        } else {
+            g_print("Failed to save config to %s\n", full_path);
+        }
     }
 }

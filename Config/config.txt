@@ -16,9 +16,9 @@ execution_time = 6
 priority = 1
 io_count = 1
 
-[process_io]
-start_time = 3
-duration = 4
+[process1_io0]
+start_time = 0
+duration = 0
 
 [process2]
 ID = P03
@@ -75,3 +75,4 @@ arrival_time = 14
 execution_time = 4
 priority = 3
 io_count = 0
+

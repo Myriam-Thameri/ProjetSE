@@ -67,4 +67,5 @@ static void on_process_row_selected(GtkListBox *box,
                                     gpointer user_data);
 static void on_apply_process_changes(GtkButton *button,
                                      gpointer user_data);
+static void on_delete_process_clicked(GtkButton *button, gpointer user_data);
 #endif // INTERFACE_UTILS_H

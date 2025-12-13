@@ -20,5 +20,6 @@ typedef struct
 void trim(char* str);// function to remove spaces, tabulation, \n   from the start and end of a string to get a clean format 
 
 int load_config( char* filename, Config* cfg); // loads the config from the file and extract the processes and their attributes from the text file
+int save_config( char* filename, Config* cfg); // saves the config structure back to a file
 void free_config(Config *cfg);
 #endif // CONFIG_H
