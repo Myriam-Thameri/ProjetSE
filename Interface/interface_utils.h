@@ -20,6 +20,10 @@ typedef struct {
     Config *CFG;
     GtkWidget *quantum_box;   
     GtkWidget *quantum_entry;
+    GtkWidget *aging_interval_box;          
+    GtkWidget *aging_interval_entry;        
+    GtkWidget *max_priority_box;            
+    GtkWidget *max_priority_entry; 
     int quantum;   
     char config_filename[124];
     char log_filename[256];
