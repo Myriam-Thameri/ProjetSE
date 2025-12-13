@@ -4,7 +4,7 @@ process_count = 10
 
 [process0]
 ID = P01
-arrival_time = 0
+arrival_time = 1
 execution_time = 10
 priority = 3
 io_count = 0

@@ -473,8 +473,9 @@ void on_edit_config_clicked(GtkButton *button, gpointer user_data)
     gtk_window_set_child(GTK_WINDOW(dialog), main_box);
 
     /* Title */
-    GtkWidget *title = gtk_label_new("Edit Processes (in-memory)");
+    GtkWidget *title = gtk_label_new("Edit Processes");
     gtk_widget_set_halign(title, GTK_ALIGN_START);
+    gtk_widget_add_css_class(title, "edit-dialog-title");
     gtk_box_append(GTK_BOX(main_box), title);
 
     /* Horizontal split: list | editor */
@@ -706,16 +707,37 @@ static GtkWidget* create_editor_form(AppContext *app) {
     gtk_grid_set_row_spacing(GTK_GRID(grid), 10);
     gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
 
-    #define ADD_ROW(row, label_text, entry_ptr) \
-        gtk_grid_attach(GTK_GRID(grid), gtk_label_new(label_text), 0, row, 1, 1); \
-        entry_ptr = gtk_entry_new(); \
-        gtk_grid_attach(GTK_GRID(grid), entry_ptr, 1, row, 1, 1);
+    GtkWidget *lbl;
 
-    ADD_ROW(0, "ID", app->id_entry);
-    ADD_ROW(1, "Arrival Time", app->arrival_entry);
-    ADD_ROW(2, "Execution Time", app->exec_entry);
-    ADD_ROW(3, "Priority", app->priority_entry);
-    ADD_ROW(4, "IO Count", app->io_entry);
+    lbl = gtk_label_new("ID");
+    gtk_widget_add_css_class(lbl, "editor-label");
+    gtk_grid_attach(GTK_GRID(grid), lbl, 0, 0, 1, 1);
+    app->id_entry = gtk_entry_new();
+    gtk_grid_attach(GTK_GRID(grid), app->id_entry, 1, 0, 1, 1);
+
+    lbl = gtk_label_new("Arrival Time");
+    gtk_widget_add_css_class(lbl, "editor-label");
+    gtk_grid_attach(GTK_GRID(grid), lbl, 0, 1, 1, 1);
+    app->arrival_entry = gtk_entry_new();
+    gtk_grid_attach(GTK_GRID(grid), app->arrival_entry, 1, 1, 1, 1);
+
+    lbl = gtk_label_new("Execution Time");
+    gtk_widget_add_css_class(lbl, "editor-label");
+    gtk_grid_attach(GTK_GRID(grid), lbl, 0, 2, 1, 1);
+    app->exec_entry = gtk_entry_new();
+    gtk_grid_attach(GTK_GRID(grid), app->exec_entry, 1, 2, 1, 1);
+
+    lbl = gtk_label_new("Priority");
+    gtk_widget_add_css_class(lbl, "editor-label");
+    gtk_grid_attach(GTK_GRID(grid), lbl, 0, 3, 1, 1);
+    app->priority_entry = gtk_entry_new();
+    gtk_grid_attach(GTK_GRID(grid), app->priority_entry, 1, 3, 1, 1);
+
+    lbl = gtk_label_new("IO Count");
+    gtk_widget_add_css_class(lbl, "editor-label");
+    gtk_grid_attach(GTK_GRID(grid), lbl, 0, 4, 1, 1);
+    app->io_entry = gtk_entry_new();
+    gtk_grid_attach(GTK_GRID(grid), app->io_entry, 1, 4, 1, 1);
 
     return grid;
 }
@@ -947,6 +969,8 @@ gtk_box_append(GTK_BOX(card), params_row);
         ".start-button { font-size: 18px; padding: 10px; margin-top: 10px; }"
         ".show-logfile-button { font-size: 18px; padding: 10px; margin-top: 10px; }"
         ".process-row { padding: 10px; border-bottom: 1px solid #eee; }"
+        ".editor-label { color: #ffffff; font-weight: 600; }"
+        ".edit-dialog-title { color: #ffffff; font-weight: 700; font-size: 16px; }"
     );
     gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(provider), 800);
 
