@@ -3,9 +3,9 @@
 #include <string.h>
 #include <stdio.h>     // for printf and perror
 #include <dirent.h>    // for listing files in a folder
-#include <stdlib.h>    // for malloc and free
 #include "utils.h"
 #include "../Interface/interface_utils.h"
+#include "../Config/config.h" 
 
 #define CONFIG_DIR "./Config"
 #define MAX_FILES 50

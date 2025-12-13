@@ -15,7 +15,7 @@ SRC = main.c \
 	Config/config.c \
 	$(wildcard Algorithms/*.c) \
 	Utils/Algorithms.c \
-	Interface/Interface.c \
+	Interface/interface.c \
 	Utils/utils.c \
 	Interface/gantt_chart.c \
 	Utils/log_file.c
