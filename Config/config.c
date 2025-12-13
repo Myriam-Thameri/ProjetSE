@@ -106,3 +106,8 @@ int load_config(char* path , Config* cfg) {
     fclose(file);
     return 1;
 }
+void free_config(Config *cfg)
+{
+    if (!cfg) return;
+    free(cfg);
+}

@@ -92,9 +92,11 @@ void handle_config_submission(AppContext *app, const char *filename) {
 
     if (res == 1) {
         g_print("Success.\n");
+        gtk_widget_set_sensitive(app->edit_config_btn, TRUE);
         update_process_list_ui(app);
     } else {
         g_print("Failed to load config.\n");
+        gtk_widget_set_sensitive(app->edit_config_btn, FALSE);
         app->CFG->process_count = 0;
         update_process_list_ui(app);
     }
@@ -412,6 +414,286 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
 
     gtk_widget_set_sensitive(app->show_logfile_btn, TRUE);
 }
+static void on_add_process_clicked(GtkButton *button, gpointer user_data) {
+    AppContext *app = (AppContext *)user_data;
+
+    if (app->CFG->process_count >= 20) {
+        // Maximum processes reached
+        GtkWidget *msg = gtk_message_dialog_new(GTK_WINDOW(app->window),
+                                                GTK_DIALOG_MODAL,
+                                                GTK_MESSAGE_WARNING,
+                                                GTK_BUTTONS_OK,
+                                                "Maximum 20 processes allowed.");
+        gtk_window_present(GTK_WINDOW(msg));
+        return;
+    }
+
+    // Add a new empty process in CFG
+    PROCESS *new_process = &app->CFG->processes[app->CFG->process_count];
+    strcpy(new_process->ID, "P?");
+    new_process->arrival_time = 0;
+    new_process->execution_time = 0;
+    new_process->priority = 0;
+    new_process->io_count = 0;
+
+    int index = app->CFG->process_count;
+    app->CFG->process_count++;
+
+    // Add a new row to the GTK list
+    GtkWidget *row = gtk_list_box_row_new();
+    GtkWidget *label = gtk_label_new(new_process->ID);
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
+    gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), label);
+    gtk_list_box_append(GTK_LIST_BOX(app->process_list_box), row);
+
+    gtk_widget_show(row);
+}
+
+
+void on_edit_config_clicked(GtkButton *button, gpointer user_data)
+{
+    AppContext *app = (AppContext *)user_data;
+
+    GtkWidget *dialog = gtk_window_new();
+    gtk_window_set_title(GTK_WINDOW(dialog), "Edit Configuration");
+    gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
+    gtk_window_set_transient_for(GTK_WINDOW(dialog),
+                                GTK_WINDOW(app->window));
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 900, 500);
+
+    /* Main vertical container */
+    GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 15);
+    gtk_widget_set_margin_top(main_box, 15);
+    gtk_widget_set_margin_bottom(main_box, 15);
+    gtk_widget_set_margin_start(main_box, 15);
+    gtk_widget_set_margin_end(main_box, 15);
+    gtk_window_set_child(GTK_WINDOW(dialog), main_box);
+
+    /* Title */
+    GtkWidget *title = gtk_label_new("Edit Processes (in-memory)");
+    gtk_widget_set_halign(title, GTK_ALIGN_START);
+    gtk_box_append(GTK_BOX(main_box), title);
+
+    /* Horizontal split: list | editor */
+    GtkWidget *content = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 20);
+    gtk_widget_set_vexpand(content, TRUE);
+    gtk_box_append(GTK_BOX(main_box), content);
+
+    /* LEFT: process list (scrollable) */
+    GtkWidget *list_scroller = gtk_scrolled_window_new();
+    gtk_widget_set_hexpand(list_scroller, TRUE);
+    gtk_widget_set_vexpand(list_scroller, TRUE);
+
+    GtkWidget *process_list = create_process_list_editor(app);
+    app->process_list_box = process_list;
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(list_scroller),
+                                  process_list);
+    gtk_box_append(GTK_BOX(content), list_scroller);
+
+    /* RIGHT: editor form */
+    GtkWidget *editor = create_editor_form(app);
+    gtk_widget_set_hexpand(editor, TRUE);
+    gtk_box_append(GTK_BOX(content), editor);
+
+
+    /* Footer buttons */
+    GtkWidget *footer = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+    gtk_widget_set_halign(footer, GTK_ALIGN_END);
+
+    GtkWidget *add_btn = gtk_button_new_with_label("Add Process");
+    gtk_box_append(GTK_BOX(footer), add_btn);
+
+    /* Connect the signal */
+    g_signal_connect(add_btn, "clicked", G_CALLBACK(on_add_process_clicked), app);
+
+    GtkWidget *apply_btn = gtk_button_new_with_label("Apply");
+    GtkWidget *close_btn = gtk_button_new_with_label("Close");
+
+    gtk_box_append(GTK_BOX(footer), apply_btn);
+    gtk_box_append(GTK_BOX(footer), close_btn);
+
+    gtk_box_append(GTK_BOX(main_box), footer);
+
+    g_signal_connect(apply_btn, "clicked",
+                    G_CALLBACK(on_apply_process_changes), app);
+
+    g_signal_connect_swapped(close_btn, "clicked",
+                            G_CALLBACK(gtk_window_close), dialog);
+    gtk_window_present(GTK_WINDOW(dialog));
+
+}
+
+static void refresh_process_list(AppContext *app)
+{
+    if (!app || !app->CFG || !app->process_list_box) return;
+
+    GtkListBox *box = GTK_LIST_BOX(app->process_list_box);
+
+    /* Remove all rows */
+    GtkWidget *row;
+    while ((row = gtk_widget_get_first_child(GTK_WIDGET(box))) != NULL) {
+        gtk_list_box_remove(box, row);
+    }
+
+    /* Rebuild rows */
+    for (int i = 0; i < app->CFG->process_count; i++) {
+        PROCESS p = app->CFG->processes[i];
+
+        char buffer[256];
+        snprintf(buffer, sizeof(buffer),
+                 "%s | Arr:%d Exec:%d Pr:%d IO:%d",
+                 p.ID,
+                 p.arrival_time,
+                 p.execution_time,
+                 p.priority,
+                 p.io_count);
+
+        GtkWidget *label = gtk_label_new(buffer);
+        gtk_widget_set_halign(label, GTK_ALIGN_START);
+        gtk_list_box_append(box, label);
+    }
+}
+
+
+static void on_apply_process_changes(GtkButton *button,
+                                     gpointer user_data)
+{
+    AppContext *app = (AppContext *)user_data;
+
+    if (!app || !app->CFG) return;
+    if (app->selected_process < 0 ||
+        app->selected_process >= app->CFG->process_count)
+        return;
+
+    PROCESS *p = &app->CFG->processes[app->selected_process];
+
+    /* Read fields */
+    const char *id = gtk_editable_get_text(GTK_EDITABLE(app->id_entry));
+    const char *arrival = gtk_editable_get_text(GTK_EDITABLE(app->arrival_entry));
+    const char *exec = gtk_editable_get_text(GTK_EDITABLE(app->exec_entry));
+    const char *priority = gtk_editable_get_text(GTK_EDITABLE(app->priority_entry));
+    const char *io = gtk_editable_get_text(GTK_EDITABLE(app->io_entry));
+
+    /* Basic validation */
+    if (!id || !*id) return;
+
+    int arrival_i = atoi(arrival);
+    int exec_i = atoi(exec);
+    int priority_i = atoi(priority);
+    int io_i = atoi(io);
+
+    if (arrival_i < 0 || exec_i <= 0 || priority_i < 0 || io_i < 0)
+        return;
+
+    /* Apply to CFG */
+    strncpy(p->ID, id, sizeof(p->ID) - 1);
+    p->ID[sizeof(p->ID) - 1] = '\0';
+
+    p->arrival_time = arrival_i;
+    p->execution_time = exec_i;
+    p->priority = priority_i;
+    p->io_count = io_i;
+
+    refresh_process_list(app);
+
+    gtk_list_box_select_row(
+        GTK_LIST_BOX(app->process_list_box),
+        gtk_list_box_get_row_at_index(
+            GTK_LIST_BOX(app->process_list_box),
+            app->selected_process
+        )
+    );
+}
+
+
+static void load_process_into_editor(AppContext *app, int index) {
+    if (!app || !app->CFG) return;
+    if (index < 0 || index >= app->CFG->process_count) return;
+
+    PROCESS p = app->CFG->processes[index];
+
+    gtk_editable_set_text(GTK_EDITABLE(app->id_entry), p.ID);
+
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%d", p.arrival_time);
+    gtk_editable_set_text(GTK_EDITABLE(app->arrival_entry), buf);
+
+    snprintf(buf, sizeof(buf), "%d", p.execution_time);
+    gtk_editable_set_text(GTK_EDITABLE(app->exec_entry), buf);
+
+    snprintf(buf, sizeof(buf), "%d", p.priority);
+    gtk_editable_set_text(GTK_EDITABLE(app->priority_entry), buf);
+
+    snprintf(buf, sizeof(buf), "%d", p.io_count);
+    gtk_editable_set_text(GTK_EDITABLE(app->io_entry), buf);
+}
+
+static void on_process_row_selected(GtkListBox *box,
+                                    GtkListBoxRow *row,
+                                    gpointer user_data) {
+    AppContext *app = (AppContext *)user_data;
+    if (!row) return;
+
+    int index = gtk_list_box_row_get_index(row);
+    app->selected_process = index;
+
+    load_process_into_editor(app, index);
+}
+
+static GtkWidget* create_process_list_editor(AppContext *app) {
+    GtkWidget *list_box = gtk_list_box_new();
+    gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box),
+                                   GTK_SELECTION_SINGLE);
+
+    g_signal_connect(list_box, "row-selected",
+                     G_CALLBACK(on_process_row_selected), app);
+
+    if (!app->CFG || app->CFG->process_count <= 0) {
+        GtkWidget *empty = gtk_label_new("No processes loaded.");
+        gtk_list_box_append(GTK_LIST_BOX(list_box), empty);
+        return list_box;
+    }
+
+    for (int i = 0; i < app->CFG->process_count; i++) {
+        PROCESS p = app->CFG->processes[i];
+
+        char buffer[256];
+        snprintf(buffer, sizeof(buffer),
+                 "%s | Arr:%d Exec:%d Pr:%d IO:%d",
+                 p.ID,
+                 p.arrival_time,
+                 p.execution_time,
+                 p.priority,
+                 p.io_count);
+
+        GtkWidget *label = gtk_label_new(buffer);
+        gtk_widget_set_halign(label, GTK_ALIGN_START);
+        gtk_list_box_append(GTK_LIST_BOX(list_box), label);
+    }
+
+    return list_box;
+}
+
+static GtkWidget* create_editor_form(AppContext *app) {
+    GtkWidget *grid = gtk_grid_new();
+    gtk_grid_set_row_spacing(GTK_GRID(grid), 10);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
+
+    #define ADD_ROW(row, label_text, entry_ptr) \
+        gtk_grid_attach(GTK_GRID(grid), gtk_label_new(label_text), 0, row, 1, 1); \
+        entry_ptr = gtk_entry_new(); \
+        gtk_grid_attach(GTK_GRID(grid), entry_ptr, 1, row, 1, 1);
+
+    ADD_ROW(0, "ID", app->id_entry);
+    ADD_ROW(1, "Arrival Time", app->arrival_entry);
+    ADD_ROW(2, "Execution Time", app->exec_entry);
+    ADD_ROW(3, "Priority", app->priority_entry);
+    ADD_ROW(4, "IO Count", app->io_entry);
+
+    return grid;
+}
+
+
 
 void activate(GtkApplication *gtk_app, gpointer user_data) {
     AppContext *app = (AppContext *)user_data;
@@ -427,7 +709,7 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     app->window = gtk_application_window_new(gtk_app);
     gtk_window_set_title(GTK_WINDOW(app->window), "OS Scheduler");
     gtk_window_set_default_size(GTK_WINDOW(app->window), 1200, 850);
-
+    app->selected_process = -1;
     GtkWidget *main_container = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
     // Header
@@ -553,6 +835,15 @@ gtk_box_append(GTK_BOX(card), params_row);
     gtk_box_append(GTK_BOX(input_box), btn_browse);
 
     gtk_box_append(GTK_BOX(card), input_box);
+
+    //edit config
+    app->edit_config_btn = gtk_button_new_with_label("Edit Config");
+    gtk_widget_add_css_class(app->edit_config_btn, "edit-config-button");
+    gtk_widget_set_sensitive(app->edit_config_btn, FALSE);
+    g_signal_connect(app->edit_config_btn, "clicked",
+                    G_CALLBACK(on_edit_config_clicked), app);
+
+    gtk_box_append(GTK_BOX(card), app->edit_config_btn);
 
     // Process List
     GtkWidget *list_scroller = gtk_scrolled_window_new();
