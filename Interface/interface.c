@@ -11,17 +11,54 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../Utils/functionnalities.h" 
 #include "../Utils/utils.h"
 #include "./interface_utils.h"
-#include "./gantt_chart.h"  
+#include "./gantt_chart.h"  // NEW: Include Gantt chart
 #include "../Config/config.h"
 #include "../Config/types.h"
 #include "../Utils/Algorithms.h"
-#include "../Utils/log_file.h"
 
 #define CONFIG_DIR "./Config"
 #define MAX_FILES 50
 #define MAX_FILENAME_LEN 256
+
+typedef struct {
+    GtkWidget *window;
+    GtkWidget *process_list_box; 
+    GtkWidget *algo_dropdown;
+    GtkWidget *config_entry;
+    GtkWidget *gantt_widget;
+    GtkWidget *quantum_box;      // NEW: Container for quantum input
+    GtkWidget *quantum_entry;    // NEW: Quantum input field
+    Config *CFG;
+    int quantum;                 // NEW: Quantum value storage
+    
+    char available_files[MAX_FILES][MAX_FILENAME_LEN];
+    int files_count;
+} AppContext;
+
+void scan_config_directory(AppContext *app) {
+    GDir *dir;
+    const gchar *filename;
+    app->files_count = 0;
+
+    dir = g_dir_open(CONFIG_DIR, 0, NULL);
+    if (dir) {
+        while ((filename = g_dir_read_name(dir))) {
+            if (g_str_has_suffix(filename, ".txt") || 
+                g_str_has_suffix(filename, ".conf") || 
+                g_str_has_suffix(filename, ".cfg")) {
+                
+                if (app->files_count < MAX_FILES) {
+                    strncpy(app->available_files[app->files_count], filename, MAX_FILENAME_LEN - 1);
+                    app->files_count++;
+                }
+            }
+        }
+        g_dir_close(dir);
+    }
+}
 
 void update_process_list_ui(AppContext *app) {
     GtkWidget *list_box = app->process_list_box;
@@ -85,8 +122,6 @@ void handle_config_submission(AppContext *app, const char *filename) {
     }
 
     g_print("Attempting to load: %s\n", full_path);
-    strncpy(app->config_filename, filename, sizeof(app->config_filename) - 1);
-    app->config_filename[sizeof(app->config_filename) - 1] = '\0';
     
     int res = load_config(full_path, app->CFG);
     
@@ -163,20 +198,14 @@ static void on_browse_clicked(GtkWidget *button, gpointer user_data) {
     gtk_window_present(GTK_WINDOW(dialog));
 }
 
+// NEW: Function to check if algorithm requires quantum
 static gboolean algorithm_requires_quantum(const char *algorithm) {
     return (strcmp(algorithm, "Round_Robin") == 0 ||
             strcmp(algorithm, "Multilevel_Aging") == 0 ||
-            strcmp(algorithm, "MultilevelAgingg") == 0 ||
             strcmp(algorithm, "Multilevel_Static") == 0);
 }
 
-static gboolean algorithm_requires_aging(const char *algorithm) {
-    return (strcmp(algorithm, "Multilevel_Aging") == 0 ||
-            strcmp(algorithm, "MultilevelAgingg") == 0);
-}
-
-
-
+// NEW: Callback to show/hide quantum input based on algorithm selection
 static void on_algorithm_selected(GObject *dropdown, GParamSpec *pspec, gpointer user_data) {
     AppContext *app = (AppContext *)user_data;
     GtkStringList *list = GTK_STRING_LIST(gtk_drop_down_get_model(GTK_DROP_DOWN(dropdown)));
@@ -191,15 +220,6 @@ static void on_algorithm_selected(GObject *dropdown, GParamSpec *pspec, gpointer
             gtk_widget_set_visible(app->quantum_box, TRUE);
         } else {
             gtk_widget_set_visible(app->quantum_box, FALSE);
-        }
-        
-        // Show or hide aging parameters based on algorithm
-        if (algorithm_requires_aging(algorithm)) {
-            gtk_widget_set_visible(app->aging_interval_box, TRUE);
-            gtk_widget_set_visible(app->max_priority_box, TRUE);
-        } else {
-            gtk_widget_set_visible(app->aging_interval_box, FALSE);
-            gtk_widget_set_visible(app->max_priority_box, FALSE);
         }
     }
 }
@@ -235,62 +255,6 @@ static void on_algorithm_file_added(GObject *source, GAsyncResult *result, gpoin
     }
 }
 
-void on_logfile_clicked(GtkWidget *button, gpointer user_data) {
-    AppContext *app = (AppContext *)user_data;
-    
-    GtkWidget *dialog = gtk_window_new();
-    gtk_window_set_title(GTK_WINDOW(dialog), "Logfile Viewer");
-    gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
-    gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(app->window));
-    gtk_window_set_default_size(GTK_WINDOW(dialog), 600, 400);
-
-    GtkWidget *content_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    gtk_widget_set_margin_top(content_box, 10);
-    gtk_widget_set_margin_bottom(content_box, 10);
-    gtk_widget_set_margin_start(content_box, 10);
-    gtk_widget_set_margin_end(content_box, 10);
-    gtk_window_set_child(GTK_WINDOW(dialog), content_box);
-
-    GtkWidget *text_view = gtk_text_view_new();
-    gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE);
-    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(text_view), GTK_WRAP_WORD_CHAR);
-    
-    GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(text_view));
-
-    FILE *log_file = fopen(app->log_filename, "r");
-    if (log_file) {
-        fseek(log_file, 0, SEEK_END);
-        long fsize = ftell(log_file);
-        fseek(log_file, 0, SEEK_SET);
-
-        char *log_content = malloc(fsize + 1);
-        if (log_content) {
-            fread(log_content, 1, fsize, log_file);
-            log_content[fsize] = '\0';
-            fclose(log_file);
-
-            gtk_text_buffer_set_text(buffer, log_content, -1);
-            free(log_content);
-        } else {
-            fclose(log_file);
-            gtk_text_buffer_set_text(buffer, "Failed to allocate memory for logfile.", -1);
-        }
-    } else {
-        gtk_text_buffer_set_text(buffer, "Logfile not found.", -1);
-    }
-
-    GtkWidget *scroller = gtk_scrolled_window_new();
-    gtk_widget_set_vexpand(scroller, TRUE);
-    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroller), text_view);
-    
-    gtk_box_append(GTK_BOX(content_box), scroller);
-    
-    GtkWidget *close_btn = gtk_button_new_with_label("Close");
-    g_signal_connect_swapped(close_btn, "clicked", G_CALLBACK(gtk_window_close), dialog);
-    gtk_box_append(GTK_BOX(content_box), close_btn);
-    gtk_window_present(GTK_WINDOW(dialog));
-}
-
 static void on_add_algorithm_clicked(GtkButton *button, gpointer user_data) {
     AppContext *app = (AppContext *)user_data;
     GtkFileDialog *dialog = gtk_file_dialog_new();
@@ -302,6 +266,7 @@ static void on_add_algorithm_clicked(GtkButton *button, gpointer user_data) {
     gtk_file_dialog_open(dialog, GTK_WINDOW(app->window), NULL, on_algorithm_file_added, app);
 }
 
+// NEW: Start button with quantum support
 static void on_start_clicked(GtkButton *button, gpointer user_data) {
     AppContext *app = (AppContext *)user_data;
     
@@ -320,18 +285,7 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
     }
     
     const char *algorithm = gtk_string_list_get_string(list, index);
-
-    g_print("Starting scheduler with algorithm: %s\n", algorithm);
-    g_print("Processes loaded: %d\n", app->CFG->process_count);
     
-    // Prepare log filename
-    char config_copy[256];
-    strncpy(config_copy, app->config_filename, sizeof(config_copy) - 1);
-    remove_extension(config_copy);
-    snprintf(app->log_filename, sizeof(app->log_filename), "output/%s_%s.log", algorithm, config_copy);
-
-    init_log(algorithm, app->config_filename);
-
     // Get quantum value if needed
     int quantum = 2; // Default value
     if (algorithm_requires_quantum(algorithm)) {
@@ -343,39 +297,19 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
                 quantum = 2;
             }
         }
-        g_print("Quantum: %d\n", quantum);
-    }
-    int aging_interval = 3; // Default
-    int max_priority = 5;   // Default
-    
-    if (algorithm_requires_aging(algorithm)) {
-        const char *aging_text = gtk_editable_get_text(GTK_EDITABLE(app->aging_interval_entry));
-        if (aging_text && strlen(aging_text) > 0) {
-            aging_interval = atoi(aging_text);
-            if (aging_interval <= 0) {
-                g_print("Warning: Invalid aging interval, using default (3)\n");
-                aging_interval = 3;
-            }
-        }
-        
-        const char *priority_text = gtk_editable_get_text(GTK_EDITABLE(app->max_priority_entry));
-        if (priority_text && strlen(priority_text) > 0) {
-            max_priority = atoi(priority_text);
-            if (max_priority <= 0) {
-                g_print("Warning: Invalid max priority, using default (5)\n");
-                max_priority = 5;
-            }
-        }
-        
-        g_print("Aging Interval: %d, Max Priority: %d\n", aging_interval, max_priority);
     }
     
     // Store quantum in app context
     app->quantum = quantum;
     
+    g_print("Starting scheduler with algorithm: %s\n", algorithm);
+    if (algorithm_requires_quantum(algorithm)) {
+        g_print("Quantum: %d\n", quantum);
+    }
+    g_print("Processes loaded: %d\n", app->CFG->process_count);
+    
     // Clear previous Gantt data before running algorithm
     clear_gantt_slices();
-    clear_io_slices();  // NEW: Clear I/O slices
     
     // Call the appropriate scheduling algorithm based on selection
     if (strcmp(algorithm, "First_In_First_Out") == 0) {
@@ -384,8 +318,8 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
     else if (strcmp(algorithm, "Round_Robin") == 0) {
         RoundRobin_Algo(app->CFG, quantum);
     }
-    else if (strcmp(algorithm, "Multilevel_Aging") == 0 || strcmp(algorithm, "MultilevelAgingg") == 0) {
-        MultilevelAgingScheduler(app->CFG, quantum, aging_interval, max_priority);
+    else if (strcmp(algorithm, "Multilevel_Aging") == 0) {
+        MultilevelAgingScheduler(app->CFG, quantum,1,1);
     }
     else if (strcmp(algorithm, "Preemptive_Priority") == 0) {
         run_priority_preemptive(app->CFG);
@@ -406,13 +340,12 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
     // Refresh the Gantt chart after algorithm completes
     gtk_widget_queue_draw(app->gantt_widget);
     
-    g_print("Scheduling complete. CPU slices: %d, I/O slices: %d\n", slice_count, io_slice_count);
-
-    gtk_widget_set_sensitive(app->show_logfile_btn, TRUE);
+    g_print("Scheduling complete. Gantt chart updated with %d slices.\n", slice_count);
 }
 
 void activate(GtkApplication *gtk_app, gpointer user_data) {
     AppContext *app = (AppContext *)user_data;
+
     int counts = 0;
     char **algorithms = get_algorithms(&counts); 
 
@@ -423,7 +356,7 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
 
     app->window = gtk_application_window_new(gtk_app);
     gtk_window_set_title(GTK_WINDOW(app->window), "OS Scheduler");
-    gtk_window_set_default_size(GTK_WINDOW(app->window), 1200, 850);
+    gtk_window_set_default_size(GTK_WINDOW(app->window), 900, 850);
 
     GtkWidget *main_container = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     
@@ -433,22 +366,17 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_widget_set_margin_bottom(header_box, 30);
     gtk_widget_set_halign(header_box, GTK_ALIGN_CENTER);
     gtk_widget_add_css_class(header_box, "header-section");
-    GtkWidget *title = gtk_label_new("⚙ OS Scheduler");
+    gtk_box_append(GTK_BOX(header_box), gtk_label_new("⚙"));
+    GtkWidget *title = gtk_label_new("OS Scheduler");
     gtk_widget_add_css_class(title, "title-label");
     gtk_box_append(GTK_BOX(header_box), title);
     gtk_box_append(GTK_BOX(main_container), header_box);
 
-    // Horizontal container for two sections
-    GtkWidget *horizontal_container = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 20);
-    gtk_widget_set_margin_start(horizontal_container, 50);
-    gtk_widget_set_margin_end(horizontal_container, 50);
-    gtk_widget_set_margin_bottom(horizontal_container, 30);
-    gtk_widget_set_hexpand(horizontal_container, TRUE);
-
-    // Left card (Configuration) - 1/4 width
+    // Card
     GtkWidget *card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
-    gtk_widget_set_hexpand(card, FALSE);
-    gtk_widget_set_size_request(card, 250, -1);
+    gtk_widget_set_margin_start(card, 50);
+    gtk_widget_set_margin_end(card, 50);
+    gtk_widget_set_margin_bottom(card, 30);
     gtk_widget_add_css_class(card, "card");
 
     // Algorithm Section
@@ -461,64 +389,26 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_widget_add_css_class(app->algo_dropdown, "dropdown");
     gtk_box_append(GTK_BOX(card), app->algo_dropdown);
 
-    // Quantum input section
-
-    // Create individual vertical boxes for each parameter (keep as before)
-app->quantum_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-GtkWidget *quantum_label = gtk_label_new("Time Quantum");
-gtk_widget_set_halign(quantum_label, GTK_ALIGN_START);
-gtk_widget_add_css_class(quantum_label, "quantum-label");
-gtk_box_append(GTK_BOX(app->quantum_box), quantum_label);
-app->quantum_entry = gtk_entry_new();
-gtk_entry_set_placeholder_text(GTK_ENTRY(app->quantum_entry), "Enter quantum (default: 2)");
-gtk_editable_set_text(GTK_EDITABLE(app->quantum_entry), "2");
-gtk_widget_add_css_class(app->quantum_entry, "quantum-input");
-gtk_box_append(GTK_BOX(app->quantum_box), app->quantum_entry);
-gtk_widget_set_visible(app->quantum_box, FALSE);
-
-app->aging_interval_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-GtkWidget *aging_label = gtk_label_new("Aging Interval");
-gtk_widget_set_halign(aging_label, GTK_ALIGN_START);
-gtk_widget_add_css_class(aging_label, "quantum-label");
-gtk_box_append(GTK_BOX(app->aging_interval_box), aging_label);
-app->aging_interval_entry = gtk_entry_new();
-gtk_entry_set_placeholder_text(GTK_ENTRY(app->aging_interval_entry), "Enter aging interval (default: 3)");
-gtk_editable_set_text(GTK_EDITABLE(app->aging_interval_entry), "3");
-gtk_widget_add_css_class(app->aging_interval_entry, "quantum-input");
-gtk_box_append(GTK_BOX(app->aging_interval_box), app->aging_interval_entry);
-gtk_widget_set_visible(app->aging_interval_box, FALSE);
-
-app->max_priority_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-GtkWidget *max_priority_label = gtk_label_new("Max Priority");
-gtk_widget_set_halign(max_priority_label, GTK_ALIGN_START);
-gtk_widget_add_css_class(max_priority_label, "quantum-label");
-gtk_box_append(GTK_BOX(app->max_priority_box), max_priority_label);
-app->max_priority_entry = gtk_entry_new();
-gtk_entry_set_placeholder_text(GTK_ENTRY(app->max_priority_entry), "Enter max priority (default: 5)");
-gtk_editable_set_text(GTK_EDITABLE(app->max_priority_entry), "5");
-gtk_widget_add_css_class(app->max_priority_entry, "quantum-input");
-gtk_box_append(GTK_BOX(app->max_priority_box), app->max_priority_entry);
-gtk_widget_set_visible(app->max_priority_box, FALSE);
-
-// Create a horizontal row to hold all three parameter boxes
-GtkWidget *params_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10); // 10px spacing
-gtk_box_append(GTK_BOX(params_row), app->quantum_box);
-gtk_box_append(GTK_BOX(params_row), app->aging_interval_box);
-gtk_box_append(GTK_BOX(params_row), app->max_priority_box);
-
-// Append the horizontal row to the card instead of the individual boxes
-gtk_box_append(GTK_BOX(card), params_row);
-
+    // NEW: Quantum Input Section (hidden by default)
+    app->quantum_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_widget_set_margin_top(app->quantum_box, 10);
     
-    // Connect algorithm selection signal
+    GtkWidget *quantum_label = gtk_label_new("Time Quantum");
+    gtk_widget_set_halign(quantum_label, GTK_ALIGN_START);
+    gtk_widget_add_css_class(quantum_label, "quantum-label");
+    gtk_box_append(GTK_BOX(app->quantum_box), quantum_label);
+    
+    app->quantum_entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(app->quantum_entry), "Enter quantum (default: 2)");
+    gtk_editable_set_text(GTK_EDITABLE(app->quantum_entry), "2");
+    gtk_widget_add_css_class(app->quantum_entry, "quantum-input");
+    gtk_box_append(GTK_BOX(app->quantum_box), app->quantum_entry);
+    
+    gtk_widget_set_visible(app->quantum_box, FALSE); // Hidden by default
+    gtk_box_append(GTK_BOX(card), app->quantum_box);
+    
+    // Connect the algorithm selection signal AFTER quantum_box is created
     g_signal_connect(app->algo_dropdown, "notify::selected", G_CALLBACK(on_algorithm_selected), app);
-
-    gtk_box_append(GTK_BOX(card), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
-
-    // Add Algorithm Button
-    GtkWidget *btn_add_algo = gtk_button_new_with_label("Import Custom Algorithm");
-    g_signal_connect(btn_add_algo, "clicked", G_CALLBACK(on_add_algorithm_clicked), app);
-    gtk_box_append(GTK_BOX(card), btn_add_algo);
 
     gtk_box_append(GTK_BOX(card), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
 
@@ -531,11 +421,7 @@ gtk_box_append(GTK_BOX(card), params_row);
     GtkWidget *input_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     
     app->config_entry = gtk_entry_new();
-    if (app->config_filename[0] != '\0'){
-        gtk_entry_set_placeholder_text(GTK_ENTRY(app->config_entry), app->config_filename);
-    }else{
-        gtk_entry_set_placeholder_text(GTK_ENTRY(app->config_entry), "Type filename (e.g. data.txt)...");
-    }
+    gtk_entry_set_placeholder_text(GTK_ENTRY(app->config_entry), "Type filename (e.g. data.txt)...");
     gtk_widget_set_hexpand(app->config_entry, TRUE);
     gtk_box_append(GTK_BOX(input_box), app->config_entry);
 
@@ -551,7 +437,7 @@ gtk_box_append(GTK_BOX(card), params_row);
 
     // Process List
     GtkWidget *list_scroller = gtk_scrolled_window_new();
-    gtk_widget_set_size_request(list_scroller, -1, 300);
+    gtk_widget_set_size_request(list_scroller, -1, 150);
     gtk_widget_add_css_class(list_scroller, "process-list-container");
     
     app->process_list_box = gtk_list_box_new();
@@ -559,77 +445,68 @@ gtk_box_append(GTK_BOX(card), params_row);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(list_scroller), app->process_list_box);
     gtk_box_append(GTK_BOX(card), list_scroller);
 
-    // Start Button
-    GtkWidget *start_btn = gtk_button_new_with_label("Start Scheduler");
-    gtk_widget_add_css_class(start_btn, "start-button");
-    gtk_widget_set_halign(start_btn, GTK_ALIGN_FILL);
-    g_signal_connect(start_btn, "clicked", G_CALLBACK(on_start_clicked), app);
-    gtk_box_append(GTK_BOX(card), start_btn);
-
-    // Show Logfile Button
-    app->show_logfile_btn = gtk_button_new_with_label("Show Logfile");
-    gtk_widget_add_css_class(app->show_logfile_btn, "show-logfile-button");
-    gtk_widget_set_halign(app->show_logfile_btn, GTK_ALIGN_FILL);
-    gtk_widget_set_sensitive(app->show_logfile_btn, FALSE);
-    g_signal_connect(app->show_logfile_btn, "clicked", G_CALLBACK(on_logfile_clicked), app);
-    gtk_box_append(GTK_BOX(card), app->show_logfile_btn);
-
-    // Add left card to horizontal container
-    gtk_box_append(GTK_BOX(horizontal_container), card);
-
-    // Right card (Gantt Chart) - 3/4 width
-    GtkWidget *gantt_card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
-    gtk_widget_set_hexpand(gantt_card, TRUE);
-    gtk_widget_add_css_class(gantt_card, "card");
-
+    // NEW: Gantt Chart Section
+    gtk_box_append(GTK_BOX(card), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
+    
     GtkWidget *gantt_label = gtk_label_new("Execution Timeline");
     gtk_widget_set_halign(gantt_label, GTK_ALIGN_START);
     gtk_widget_add_css_class(gantt_label, "section-label");
-    gtk_box_append(GTK_BOX(gantt_card), gantt_label);
-
-    // SCROLLABLE GANTT SECTION
-    GtkWidget *gantt_scroller = gtk_scrolled_window_new();
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(gantt_scroller),
-                                    GTK_POLICY_AUTOMATIC,  
-                                    GTK_POLICY_AUTOMATIC); 
-    gtk_widget_set_vexpand(gantt_scroller, TRUE);
-    gtk_widget_add_css_class(gantt_scroller, "gantt-container");
-
+    gtk_box_append(GTK_BOX(card), gantt_label);
+    
     app->gantt_widget = create_gantt_chart_widget();
-    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(gantt_scroller), app->gantt_widget);
-    gtk_box_append(GTK_BOX(gantt_card), gantt_scroller);
+    gtk_widget_add_css_class(app->gantt_widget, "gantt-container");
+    gtk_box_append(GTK_BOX(card), app->gantt_widget);
 
-    // Add right card to horizontal container
-    gtk_box_append(GTK_BOX(horizontal_container), gantt_card);
+    // Add Algorithm Button
+    GtkWidget *btn_add_algo = gtk_button_new_with_label("Import Custom Algorithm");
+    g_signal_connect(btn_add_algo, "clicked", G_CALLBACK(on_add_algorithm_clicked), app);
+    gtk_box_append(GTK_BOX(card), btn_add_algo);
 
-    // Add horizontal container to main container
-    gtk_box_append(GTK_BOX(main_container), horizontal_container);
+    gtk_box_append(GTK_BOX(main_container), card);
+
+    // Start Button
+    GtkWidget *start_btn = gtk_button_new_with_label("Start Scheduler");
+    gtk_widget_add_css_class(start_btn, "start-button");
+    gtk_widget_set_margin_start(start_btn, 50);
+    gtk_widget_set_margin_end(start_btn, 50);
+    gtk_widget_set_halign(start_btn, GTK_ALIGN_FILL);
+    g_signal_connect(start_btn, "clicked", G_CALLBACK(on_start_clicked), app);
+    gtk_box_append(GTK_BOX(main_container), start_btn);
 
     gtk_window_set_child(GTK_WINDOW(app->window), main_container);
 
-    // CSS Styling - UPDATED gantt-container height for I/O support
+    // CSS Styling
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_string(provider,
-        "window { background: linear-gradient(135deg, #000 0%, #764ba2 100%); }"
+        "window { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }"
         ".header-section { color: white; }"
         ".title-label { font-size: 36px; font-weight: bold; }"
-        ".card { background: #fff; border-radius: 12px; padding: 20px; }"
+        ".card { background: white; border-radius: 12px; padding: 20px; }"
         ".section-label { font-weight: bold; margin-bottom: 5px; color: #444; }"
         ".quantum-label { font-size: 14px; color: #666; }"
         ".quantum-input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }"
         ".process-list-container { margin-top: 15px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; }"
-        ".gantt-container { margin-top: 15px; border: 1px solid #ddd; border-radius: 5px; background: white; min-height: 320px; }"
-        ".start-button { font-size: 18px; padding: 10px; margin-top: 10px; }"
-        ".show-logfile-button { font-size: 18px; padding: 10px; margin-top: 10px; }"
+        ".gantt-container { margin-top: 15px; border: 1px solid #ddd; border-radius: 5px; background: white; min-height: 150px; }"
+        ".start-button { font-size: 18px; padding: 10px; margin-bottom: 20px; }"
         ".process-row { padding: 10px; border-bottom: 1px solid #eee; }"
     );
     gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(provider), 800);
 
     gtk_window_present(GTK_WINDOW(app->window));
+}
 
-    if (app->config_filename[0] != '\0'){
-        handle_config_submission(app, app->config_filename);
-    }else{
-        app->config_filename[0] = '\0';
-    }
+int main(int argc, char **argv) {
+    AppContext *app_data = g_new0(AppContext, 1);
+    app_data->CFG = g_new0(Config, 1);
+    app_data->quantum = 2; // Initialize quantum with default value
+
+    GtkApplication *app = gtk_application_new("com.example.OSScheduler", G_APPLICATION_DEFAULT_FLAGS);
+    g_signal_connect(app, "activate", G_CALLBACK(activate), app_data);
+    
+    int status = g_application_run(G_APPLICATION(app), argc, argv);
+    
+    g_free(app_data->CFG);
+    g_free(app_data);
+    g_object_unref(app);
+    return status;
 }
