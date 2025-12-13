@@ -1,35 +1,61 @@
-#include "utils.h"
-#include <stdio.h>
 #include <regex.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>     // for printf and perror
+#include <dirent.h>    // for listing files in a folder
+#include <stdlib.h>    // for malloc and free
+#include "utils.h"
+#include "../Interface/interface_utils.h"
 
-void get_all_files_in_directory(char *dir_path, char files[][20], int *count); {
-    struct dirent *de;
-    DIR *directory = opendir(dir_path);
-    count = 0;
+#define CONFIG_DIR "./Config"
+#define MAX_FILES 50
+#define MAX_FILENAME_LEN 256
 
-    if (directory == NULL) {    
-        printf("ERROR : Could not open current directory" );
-        return 0;
-    }
+void scan_config_directory(AppContext *app) {
+    GDir *dir;
+    const gchar *filename;
+    app->files_count = 0;
 
-    int expreg;
-    regex_t regex;
-    expreg = regcomp(&regex, "^.+\\.txt$", REG_EXTENDED|REG_ICASE);
-    if (expreg !=0)
-    {
-        printf("ERROR : Could not compile regex\n");
-        return files;
-    }
-    
-    while ((de = readdir(directory)) != NULL){
-            printf("%s\n", de->d_name);
-            if (regexec(&regex, de->d_name, 0, NULL, 0) == 0){
-                strcpy(files[i], de->d_name);
+    dir = g_dir_open(CONFIG_DIR, 0, NULL);
+    if (dir) {
+        while ((filename = g_dir_read_name(dir))) {
+            if (g_str_has_suffix(filename, ".txt") || 
+                g_str_has_suffix(filename, ".conf") || 
+                g_str_has_suffix(filename, ".cfg")) {
+                
+                if (app->files_count < MAX_FILES) {
+                    strncpy(app->available_files[app->files_count], filename, MAX_FILENAME_LEN - 1);
+                    app->files_count++;
+                }
             }
-            count++;
+        }
+        g_dir_close(dir);
     }
-    closedir(dr);
-    return files;   
+}
+
+char **get_algorithms(int *count) {    
+    DIR *dir = opendir("Algorithms/");
+    if (!dir) return NULL;
+
+    char **list = malloc(sizeof(char*) * 50); // up to 50 algos
+    *count = 0;
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+
+        char *ext = strrchr(entry->d_name, '.');
+        if (!ext || strcmp(ext, ".c") != 0) continue;
+
+        int len = ext - entry->d_name;
+
+        char *name = malloc(len + 1);
+        strncpy(name, entry->d_name, len);
+        name[len] = '\0';
+
+        list[*count] = name;
+        (*count)++;
+    }
+
+    closedir(dir);
+    return list;
 }
