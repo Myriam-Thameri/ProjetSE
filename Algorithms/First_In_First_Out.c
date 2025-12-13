@@ -56,7 +56,7 @@ void FCFS_Algo(Config* config) {
             if (current_pcb) {
                 current_pcb->io_remaining--;
 
-                if (current_pcb->io_remaining == 0) {
+                if (current_pcb->io_remaining <= 0) {
                     printf("[t=%d] %s: I/O finished → ready queue\n", time, current_pcb->process.ID);
                     current_pcb->in_io = 0;
                     current_pcb->io_index++;
@@ -102,7 +102,9 @@ void FCFS_Algo(Config* config) {
                     // Move process to I/O queue
                     ready = remove_process_from_queue(ready);
                     current_pcb->in_io = 1;
-                    current_pcb->io_remaining = p.io_operations[current_pcb->io_index].duration;
+                    // set io_remaining to duration+1 so the subsequent decrement logic
+                    // correctly handles zero-duration I/O operations
+                    current_pcb->io_remaining = p.io_operations[current_pcb->io_index].duration + 1;
                     
                     ioq = add_process_to_queue(ioq, p);
                     printf("[t=%d] %s → starts I/O (duration=%d)\n", time, p.ID,

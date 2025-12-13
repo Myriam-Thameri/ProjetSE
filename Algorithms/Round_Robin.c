@@ -63,7 +63,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
                     printf("At time %d: Process %s executes its IO and it rest : %d\n", time, io_p.ID, pcb[i].io_remaining);
                     log_print("At time %d: Process %s executes its IO and it rest : %d\n", time, io_p.ID, pcb[i].io_remaining);
                     
-                    if (pcb[i].io_remaining == 0) {
+                    if (pcb[i].io_remaining <= 0) {
                         io_queue = remove_process_from_queue(io_queue);
                         pcb[i].in_io = 0;
                         pcb[i].io_index++;
@@ -103,7 +103,8 @@ void RoundRobin_Algo(Config* config, int quantum) {
                         log_print("At time %d: Process %s starts IO\n", time, p.ID);
                         add_io_slice(p.ID, time + 1, p.io_operations[pcb[i].io_index].duration, NULL, "I/O");
                         pcb[i].in_io = 1;
-                        pcb[i].io_remaining = p.io_operations[pcb[i].io_index].duration;
+                        // Initialize io_remaining to duration+1 so zero-duration IOs are handled
+                        pcb[i].io_remaining = p.io_operations[pcb[i].io_index].duration + 1;
                         ready_queue = remove_process_from_queue(ready_queue);
                         io_queue = add_process_to_queue(io_queue, p);
                         used_quantum = 0;
