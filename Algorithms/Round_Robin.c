@@ -113,7 +113,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
                         snprintf(line4 + strlen(line4), sizeof(line4) - strlen(line4),  "%d", time + 1);
                     }
                     //  if finished
-                    else if (pcb[i].remaining_time == 0) {
+                    else if (pcb[i].remaining_time <= 0) {
                         printf("At time %d: Process %s finishes\n", time, p.ID);
                         log_print("At time %d: Process %s finishes\n", time, p.ID);
                         pcb[i].finished = 1;

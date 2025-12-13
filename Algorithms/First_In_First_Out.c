@@ -130,7 +130,7 @@ void FCFS_Algo(Config* config) {
                            current_pcb->executed_time, current_pcb->remaining_time);
 
                     // Check if process is finished
-                    if (current_pcb->remaining_time == 0) {
+                    if (current_pcb->remaining_time <= 0) {
                         ready = remove_process_from_queue(ready);
                         current_pcb->finished = 1;
                         finished++;

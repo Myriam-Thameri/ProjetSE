@@ -138,7 +138,7 @@ void SJF_Algo(Config *config) {
                     strcat(line4, "   ");
 
                     /* ---- PROCESS FINISHED ---- */
-                    if (pcb[i].remaining_time == 0) {
+                    if (pcb[i].remaining_time <= 0) {
                         printf("At time %d: %s finishes\n", time, current.ID);
                         log_print("At time %d: %s finishes\n", time, current.ID);
 
