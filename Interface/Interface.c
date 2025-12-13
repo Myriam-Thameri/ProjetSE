@@ -167,15 +167,15 @@ static void on_browse_clicked(GtkWidget *button, gpointer user_data) {
 
 
 static gboolean algorithm_requires_quantum(const char *algorithm) {
-    return (strcmp(algorithm, "Round_Robin") == 0 ||
+        return (strcmp(algorithm, "Round_Robin") == 0 ||
             strcmp(algorithm, "Multilevel_Aging") == 0 ||
-            strcmp(algorithm, "MultilevelAgingg") == 0 ||
+            strcmp(algorithm, "MultilevelAging") == 0 ||
             strcmp(algorithm, "Multilevel_Static") == 0);
 }
 
 static gboolean algorithm_requires_aging(const char *algorithm) {
-    return (strcmp(algorithm, "Multilevel_Aging") == 0 ||
-            strcmp(algorithm, "MultilevelAgingg") == 0);
+        return (strcmp(algorithm, "Multilevel_Aging") == 0 ||
+            strcmp(algorithm, "MultilevelAging") == 0);
 }
 
 
@@ -388,7 +388,7 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
     else if (strcmp(algorithm, "Round_Robin") == 0) {
         RoundRobin_Algo(app->CFG, quantum);
     }
-    else if (strcmp(algorithm, "Multilevel_Aging") == 0 || strcmp(algorithm, "MultilevelAgingg") == 0) {
+    else if (strcmp(algorithm, "Multilevel_Aging") == 0 || strcmp(algorithm, "MultilevelAging") == 0) {
         MultilevelAgingScheduler(app->CFG, quantum, aging_interval, max_priority);
     }
     else if (strcmp(algorithm, "Preemptive_Priority") == 0) {
