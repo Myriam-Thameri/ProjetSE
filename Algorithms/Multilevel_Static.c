@@ -24,7 +24,7 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
     int finished_processes = 0;
     int total_processes = config->process_count;
     
-    // Track quantum usage for current process
+
     int current_quantum_used = 0;
     PCB* last_executed = NULL;
 
@@ -33,7 +33,7 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
 
     while (finished_processes < total_processes) {
 
-        // Step 1: Process I/O operations - decrement all I/O timers
+
         for (int i = 0; i < total_processes; i++) {
             if (pcbs[i].in_io && !pcbs[i].finished) {
                 pcbs[i].io_remaining--;
@@ -47,11 +47,10 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
             }
         }
 
-        // Step 2: Select next process based on priority, then quantum expiration
         PCB* next = NULL;
         int highest_priority = -1;
         
-        // First, find the highest priority among ready processes
+
         for (int i = 0; i < total_processes; i++) {
             if (!pcbs[i].finished &&
                 !pcbs[i].in_io &&
@@ -63,8 +62,7 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
             }
         }
         
-        // Now select from processes with highest priority using Round Robin
-        // If last_executed still has highest priority and quantum not expired, continue it
+
         if (last_executed != NULL &&
             !last_executed->finished &&
             !last_executed->in_io &&
@@ -73,7 +71,7 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
             current_quantum_used < quantum) {
             next = last_executed;
         } else {
-            // Need to select new process (quantum expired or higher priority arrived)
+
             current_quantum_used = 0;
             
             for (int i = 0; i < total_processes; i++) {
@@ -85,7 +83,7 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
                     if (!next) {
                         next = &pcbs[i];
                     } else if (pcbs[i].process.arrival_time < next->process.arrival_time) {
-                        // Among same priority, select earliest arrival (FCFS)
+
                         next = &pcbs[i];
                     }
                 }
@@ -106,45 +104,39 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
         
             add_gantt_slice(next->process.ID, time, 1, NULL);
 
-            // Execute for 1 time unit
             next->remaining_time--;
             next->executed_time++;
             current_quantum_used++;
             last_executed = next;
 
-            // Step 3: Check for I/O after this execution
+
             if (next->io_index < next->process.io_count && next->remaining_time > 0) {
                 IO_OPERATION *io_op = &next->process.io_operations[next->io_index];
                 
                 if (next->executed_time >= io_op->start_time) {
                     next->io_index++;
-                    // CRITICAL: Set io_remaining to duration + 1 because it will be 
-                    // decremented at the start of the NEXT iteration before checking
+
                     next->io_remaining = io_op->duration + 1;
                     next->in_io = 1;
-                    
-                    // Add I/O slice starting at NEXT time unit
+
                     add_io_slice(next->process.ID, time + 1, io_op->duration, NULL, "I/O");
                     
                     printf("  -> %s blocks for I/O at time %d for %d units (will complete at time %d)\n", 
                            next->process.ID, time + 1, io_op->duration, time + 1 + io_op->duration);
                     log_print("  -> %s enters I/O for %d units\n", 
                              next->process.ID, io_op->duration);
-                    
-                    // Reset quantum when process blocks
+
                     current_quantum_used = 0;
                     last_executed = NULL;
                 }
             }
 
-            // Step 4: Check if quantum expired
             if (current_quantum_used >= quantum && next->remaining_time > 0 && !next->in_io) {
                 printf("  -> %s quantum expired, moving to back of queue\n", next->process.ID);
                 current_quantum_used = 0;
                 last_executed = NULL;
             }
 
-            // Step 5: Check if process finished
             if (next->remaining_time <= 0) {
                 next->finished = 1;
                 finished_processes++;
@@ -157,7 +149,7 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
                 last_executed = NULL;
             }
         } else {
-            // CPU idle
+
             printf("Time %d: CPU idle\n", time);
             log_print("Time %d: CPU idle\n", time);
             add_gantt_slice("IDLE", time, 1, "#cccccc");
