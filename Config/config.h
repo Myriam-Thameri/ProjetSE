@@ -1,6 +1,6 @@
 /*
- * Simulateur d'Ordonnancement de Processus
- * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
+ * Simulateur d'Ordonnancement de Processus 
+ * Copyright (c) 2025 Équipe ProjetSE - Université de Tunis El Manar
  *
  * Licensed under the MIT License
  * See LICENSE file in the project root for full license information.
@@ -17,9 +17,9 @@ typedef struct
     int process_count;
 } Config;
 
-void trim(char* str);// function to remove spaces, tabulation, \n   from the start and end of a string to get a clean format 
+void trim(char* str);
 
-int load_config( char* filename, Config* cfg); // loads the config from the file and extract the processes and their attributes from the text file
-int save_config( char* filename, Config* cfg); // saves the config structure back to a file
+int load_config( char* filename, Config* cfg); 
+int save_config( char* filename, Config* cfg); 
 void free_config(Config *cfg);
 #endif // CONFIG_H
