@@ -1,6 +1,7 @@
 /*
- * Simulateur d'Ordonnancement de Processus
- * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
+ * Simulateur d'Ordonnancement de Processus - Round Robin
+ * Adapted to use linked list QUEUE data structure
+ * Copyright (c) 2025 Équipe ProjetSE - Université de Tunis El Manar
  *
  * Licensed under the MIT License
  * See LICENSE file in the project root for full license information.
@@ -29,12 +30,15 @@ void RoundRobin_Algo(Config* config, int quantum) {
     ready_queue.size = 0;
     ready_queue.start = NULL;
     ready_queue.end = NULL; 
+
     QUEUE io_queue ;
     io_queue.size = 0;
     io_queue.start = NULL;
     io_queue.end = NULL;
+
     printf("Quantum Time set to %d units\n", quantum);
     log_print("Quantum Time set to %d units\n", quantum);
+
     int used_quantum = 0;
 
     printf("PCB initialized\n");
@@ -42,33 +46,35 @@ void RoundRobin_Algo(Config* config, int quantum) {
     while(finished < config->process_count) {
         printf("\nTime = %d \n", time);
         
-        // get the just arrived processes
         for (int i = 0; i < config->process_count; i++) {
             PROCESS p = config->processes[i];
             
-            if (p.arrival_time == time && !pcb[i].finished && !pcb[i].in_io) { // add to ready queue
+            if (p.arrival_time == time && !pcb[i].finished && !pcb[i].in_io) { 
                 printf("At time %d: Process %s arrived and added to ready queue\n", time, p.ID);
                 log_print("At time %d: Process %s arrived and added to ready queue\n", time, p.ID);
+
                 ready_queue = add_process_to_queue(ready_queue, p);
             }
         }
 
-        // IO 
         if (io_queue.size > 0) {
             PROCESS io_p = io_queue.start->process;
             
             for (int i = 0; i < config->process_count; i++) {
                 if (strcmp(pcb[i].process.ID, io_p.ID) == 0 && pcb[i].in_io) {
                     pcb[i].io_remaining--;
+
                     printf("At time %d: Process %s executes its IO and it rest : %d\n", time, io_p.ID, pcb[i].io_remaining);
                     log_print("At time %d: Process %s executes its IO and it rest : %d\n", time, io_p.ID, pcb[i].io_remaining);
                     
                     if (pcb[i].io_remaining <= 0) {
                         io_queue = remove_process_from_queue(io_queue);
                         pcb[i].in_io = 0;
-                        pcb[i].io_index++;
+                        pcb[i].io_index++; 
+
                         printf("At time %d: Process %s finished IO & added back to ready queue\n", time, io_p.ID);
                         log_print("At time %d: Process %s finished IO & added back to ready queue\n", time, io_p.ID);
+
                         ready_queue = add_process_to_queue(ready_queue, io_p);
                     }
                     break;
@@ -76,12 +82,11 @@ void RoundRobin_Algo(Config* config, int quantum) {
             }
         }
 
-        // process 
         int cpu_executed = 0;
         if (ready_queue.size > 0) {
             PROCESS p = ready_queue.start->process;
             
-            for (int i = 0; i < config->process_count; i++) {// search the process in PCB
+            for (int i = 0; i < config->process_count; i++) {
                 if (strcmp(pcb[i].process.ID, p.ID) == 0 && !pcb[i].finished && !pcb[i].in_io) {
                     
                     pcb[i].executed_time++;
@@ -101,34 +106,40 @@ void RoundRobin_Algo(Config* config, int quantum) {
                         
                         printf("At time %d: Process %s starts IO\n", time, p.ID);
                         log_print("At time %d: Process %s starts IO\n", time, p.ID);
+
                         add_io_slice(p.ID, time + 1, p.io_operations[pcb[i].io_index].duration, NULL, "I/O");
                         pcb[i].in_io = 1;
-                        // Initialize io_remaining to duration+1 so zero-duration IOs are handled
+                        
                         pcb[i].io_remaining = p.io_operations[pcb[i].io_index].duration + 1;
+
                         ready_queue = remove_process_from_queue(ready_queue);
+
                         io_queue = add_process_to_queue(io_queue, p);
+
                         used_quantum = 0;
+
                         strcat(line2, p.ID);
                         strcat(line2, "|");
                         snprintf(line4 + strlen(line4), sizeof(line4) - strlen(line4),  "%d", time + 1);
                     }
-                    //  if finished
                     else if (pcb[i].remaining_time <= 0) {
                         printf("At time %d: Process %s finishes\n", time, p.ID);
                         log_print("At time %d: Process %s finishes\n", time, p.ID);
+
                         pcb[i].finished = 1;
                         finished++;
                         ready_queue = remove_process_from_queue(ready_queue);
+
                         used_quantum = 0;
                         
                         strcat(line2, p.ID);
                         strcat(line2, " | ");
                         snprintf(line4 + strlen(line4), sizeof(line4) - strlen(line4), "%d", time + 1);
                     }
-                    // quantum finished
                     else if (used_quantum >= quantum) {
                         printf("At time %d: Process %s quantum finish\n", time, p.ID);
                         log_print("At time %d: Process %s quantum finish\n", time, p.ID);
+
                         ready_queue = remove_process_from_queue(ready_queue);
                         ready_queue = add_process_to_queue(ready_queue, p);
                         used_quantum = 0;
@@ -143,7 +154,6 @@ void RoundRobin_Algo(Config* config, int quantum) {
             }
         }
         
-        // CPU idle
         if (!cpu_executed) {
             add_gantt_slice("IDLE", time, 1, "#cccccc");
             strcat(line1, "--");

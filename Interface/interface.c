@@ -1,6 +1,6 @@
 /*
  * Simulateur d'Ordonnancement de Processus
- * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
+ * Copyright (c) 2025 Équipe ProjetSE - Université de Tunis El Manar
  *
  * Licensed under the MIT License
  * See LICENSE file in the project root for full license information.
@@ -189,14 +189,14 @@ static void on_algorithm_selected(GObject *dropdown, GParamSpec *pspec, gpointer
         const char *algorithm = gtk_string_list_get_string(list, index);
         g_print("Selected algorithm: %s\n", algorithm);
 
-        // Show or hide quantum input based on algorithm
+        
         if (algorithm_requires_quantum(algorithm)) {
             gtk_widget_set_visible(app->quantum_box, TRUE);
         } else {
             gtk_widget_set_visible(app->quantum_box, FALSE);
         }
         
-        // Show or hide aging parameters based on algorithm
+        
         if (algorithm_requires_aging(algorithm)) {
             gtk_widget_set_visible(app->aging_interval_box, TRUE);
             gtk_widget_set_visible(app->max_priority_box, TRUE);
@@ -314,7 +314,7 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
         return;
     }
 
-    // Get selected algorithm
+    
     GtkStringList *list = GTK_STRING_LIST(gtk_drop_down_get_model(GTK_DROP_DOWN(app->algo_dropdown)));
     guint index = gtk_drop_down_get_selected(GTK_DROP_DOWN(app->algo_dropdown));
 
@@ -328,7 +328,7 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
     g_print("Starting scheduler with algorithm: %s\n", algorithm);
     g_print("Processes loaded: %d\n", app->CFG->process_count);
 
-    // Prepare log filename
+    
     char config_copy[256];
     strncpy(config_copy, app->config_filename, sizeof(config_copy) - 1);
     remove_extension(config_copy);
@@ -336,8 +336,8 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
 
     init_log(algorithm, app->config_filename);
 
-    // Get quantum value if needed
-    int quantum = 2; // Default value
+    
+    int quantum = 2; 
     if (algorithm_requires_quantum(algorithm)) {
         const char *quantum_text = gtk_editable_get_text(GTK_EDITABLE(app->quantum_entry));
         if (quantum_text && strlen(quantum_text) > 0) {
@@ -349,8 +349,8 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
         }
         g_print("Quantum: %d\n", quantum);
     }
-    int aging_interval = 3; // Default
-    int max_priority = 5;   // Default
+    int aging_interval = 3; 
+    int max_priority = 5;   
     
     if (algorithm_requires_aging(algorithm)) {
         const char *aging_text = gtk_editable_get_text(GTK_EDITABLE(app->aging_interval_entry));
@@ -374,14 +374,11 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
         g_print("Aging Interval: %d, Max Priority: %d\n", aging_interval, max_priority);
     }
 
-    // Store quantum in app context
     app->quantum = quantum;
 
-    // Clear previous Gantt data before running algorithm
     clear_gantt_slices();
-    clear_io_slices();  // NEW: Clear I/O slices
+    clear_io_slices();  
 
-    // Call the appropriate scheduling algorithm based on selection
     if (strcmp(algorithm, "First_In_First_Out") == 0) {
         FCFS_Algo(app->CFG);
     } 
@@ -407,7 +404,6 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
         g_print("Warning: Unknown algorithm '%s'\n", algorithm);
     }
 
-    // Refresh the Gantt chart after algorithm completes
     gtk_widget_queue_draw(app->gantt_widget);
 
     g_print("Scheduling complete. CPU slices: %d, I/O slices: %d\n", slice_count, io_slice_count);
@@ -418,7 +414,7 @@ static void on_add_process_clicked(GtkButton *button, gpointer user_data) {
     AppContext *app = (AppContext *)user_data;
 
     if (app->CFG->process_count >= 20) {
-        // Maximum processes reached
+        
         GtkWidget *msg = gtk_message_dialog_new(GTK_WINDOW(app->window),
                                                 GTK_DIALOG_MODAL,
                                                 GTK_MESSAGE_WARNING,
@@ -427,8 +423,7 @@ static void on_add_process_clicked(GtkButton *button, gpointer user_data) {
         gtk_window_present(GTK_WINDOW(msg));
         return;
     }
-
-    // Add a new empty process in CFG
+    
     PROCESS *new_process = &app->CFG->processes[app->CFG->process_count];
     strcpy(new_process->ID, "P?");
     new_process->arrival_time = 0;
@@ -439,7 +434,7 @@ static void on_add_process_clicked(GtkButton *button, gpointer user_data) {
     int index = app->CFG->process_count;
     app->CFG->process_count++;
 
-    // Add a new row to the GTK list
+    
     GtkWidget *row = gtk_list_box_row_new();
     GtkWidget *label = gtk_label_new(new_process->ID);
     gtk_widget_set_halign(label, GTK_ALIGN_START);
@@ -464,7 +459,7 @@ void on_edit_config_clicked(GtkButton *button, gpointer user_data)
                                 GTK_WINDOW(app->window));
     gtk_window_set_default_size(GTK_WINDOW(dialog), 900, 500);
 
-    /* Main vertical container */
+    
     GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 15);
     gtk_widget_set_margin_top(main_box, 15);
     gtk_widget_set_margin_bottom(main_box, 15);
@@ -472,18 +467,15 @@ void on_edit_config_clicked(GtkButton *button, gpointer user_data)
     gtk_widget_set_margin_end(main_box, 15);
     gtk_window_set_child(GTK_WINDOW(dialog), main_box);
 
-    /* Title */
     GtkWidget *title = gtk_label_new("Edit Processes");
     gtk_widget_set_halign(title, GTK_ALIGN_START);
     gtk_widget_add_css_class(title, "edit-dialog-title");
     gtk_box_append(GTK_BOX(main_box), title);
 
-    /* Horizontal split: list | editor */
     GtkWidget *content = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 20);
     gtk_widget_set_vexpand(content, TRUE);
     gtk_box_append(GTK_BOX(main_box), content);
 
-    /* LEFT: process list (scrollable) */
     GtkWidget *list_scroller = gtk_scrolled_window_new();
     gtk_widget_set_hexpand(list_scroller, TRUE);
     gtk_widget_set_vexpand(list_scroller, TRUE);
@@ -494,20 +486,16 @@ void on_edit_config_clicked(GtkButton *button, gpointer user_data)
                                   process_list);
     gtk_box_append(GTK_BOX(content), list_scroller);
 
-    /* RIGHT: editor form */
     GtkWidget *editor = create_editor_form(app);
     gtk_widget_set_hexpand(editor, TRUE);
     gtk_box_append(GTK_BOX(content), editor);
 
-
-    /* Footer buttons */
     GtkWidget *footer = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     gtk_widget_set_halign(footer, GTK_ALIGN_END);
 
     GtkWidget *add_btn = gtk_button_new_with_label("Add Process");
     gtk_box_append(GTK_BOX(footer), add_btn);
 
-    /* Connect the signal */
     g_signal_connect(add_btn, "clicked", G_CALLBACK(on_add_process_clicked), app);
 
     GtkWidget *apply_btn = gtk_button_new_with_label("Apply");
@@ -520,13 +508,10 @@ void on_edit_config_clicked(GtkButton *button, gpointer user_data)
 
     gtk_box_append(GTK_BOX(main_box), footer);
 
-    g_signal_connect(apply_btn, "clicked",
-                    G_CALLBACK(on_apply_process_changes), app);
-    g_signal_connect(delete_btn, "clicked",
-                    G_CALLBACK(on_delete_process_clicked), app);
+    g_signal_connect(apply_btn, "clicked", G_CALLBACK(on_apply_process_changes), app);
+    g_signal_connect(delete_btn, "clicked", G_CALLBACK(on_delete_process_clicked), app);
 
-    g_signal_connect_swapped(close_btn, "clicked",
-                            G_CALLBACK(gtk_window_close), dialog);
+    g_signal_connect_swapped(close_btn, "clicked", G_CALLBACK(gtk_window_close), dialog);
     gtk_window_present(GTK_WINDOW(dialog));
 
 }
@@ -537,13 +522,11 @@ static void refresh_process_list(AppContext *app)
 
     GtkListBox *box = GTK_LIST_BOX(app->editor_process_list_box);
 
-    /* Remove all rows */
     GtkWidget *row;
     while ((row = gtk_widget_get_first_child(GTK_WIDGET(box))) != NULL) {
         gtk_list_box_remove(box, row);
     }
 
-    /* Rebuild rows */
     for (int i = 0; i < app->CFG->process_count; i++) {
         PROCESS p = app->CFG->processes[i];
 
@@ -563,8 +546,7 @@ static void refresh_process_list(AppContext *app)
 }
 
 
-static void on_apply_process_changes(GtkButton *button,
-                                     gpointer user_data)
+static void on_apply_process_changes(GtkButton *button, gpointer user_data)
 {
     AppContext *app = (AppContext *)user_data;
 
@@ -575,14 +557,12 @@ static void on_apply_process_changes(GtkButton *button,
 
     PROCESS *p = &app->CFG->processes[app->selected_process];
 
-    /* Read fields */
     const char *id = gtk_editable_get_text(GTK_EDITABLE(app->id_entry));
     const char *arrival = gtk_editable_get_text(GTK_EDITABLE(app->arrival_entry));
     const char *exec = gtk_editable_get_text(GTK_EDITABLE(app->exec_entry));
     const char *priority = gtk_editable_get_text(GTK_EDITABLE(app->priority_entry));
     const char *io = gtk_editable_get_text(GTK_EDITABLE(app->io_entry));
 
-    /* Basic validation */
     if (!id || !*id) return;
 
     int arrival_i = atoi(arrival);
@@ -593,7 +573,6 @@ static void on_apply_process_changes(GtkButton *button,
     if (arrival_i < 0 || exec_i <= 0 || priority_i < 0 || io_i < 0)
         return;
 
-    /* Apply to CFG */
     strncpy(p->ID, id, sizeof(p->ID) - 1);
     p->ID[sizeof(p->ID) - 1] = '\0';
 
@@ -614,7 +593,6 @@ static void on_apply_process_changes(GtkButton *button,
         );
     }
 
-    /* Persist changes to the config file if one is loaded, then reload */
     if (app->config_filename && app->config_filename[0] != '\0') {
         char full_path[512];
         if (strstr(app->config_filename, "/") == NULL) {
@@ -656,9 +634,8 @@ static void load_process_into_editor(AppContext *app, int index) {
     gtk_editable_set_text(GTK_EDITABLE(app->io_entry), buf);
 }
 
-static void on_process_row_selected(GtkListBox *box,
-                                    GtkListBoxRow *row,
-                                    gpointer user_data) {
+static void on_process_row_selected(GtkListBox *box, GtkListBoxRow *row, gpointer user_data) {
+
     AppContext *app = (AppContext *)user_data;
     if (!row) return;
 
@@ -670,11 +647,9 @@ static void on_process_row_selected(GtkListBox *box,
 
 static GtkWidget* create_process_list_editor(AppContext *app) {
     GtkWidget *list_box = gtk_list_box_new();
-    gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box),
-                                   GTK_SELECTION_SINGLE);
+    gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box), GTK_SELECTION_SINGLE);
 
-    g_signal_connect(list_box, "row-selected",
-                     G_CALLBACK(on_process_row_selected), app);
+    g_signal_connect(list_box, "row-selected", G_CALLBACK(on_process_row_selected), app);
 
     if (!app->CFG || app->CFG->process_count <= 0) {
         GtkWidget *empty = gtk_label_new("No processes loaded.");
@@ -742,7 +717,52 @@ static GtkWidget* create_editor_form(AppContext *app) {
     return grid;
 }
 
+static void on_delete_process_clicked(GtkButton *button, gpointer user_data)
+{
+    AppContext *app = (AppContext *)user_data;
+    if (!app || !app->CFG) return;
+    if (app->selected_process < 0 || app->selected_process >= app->CFG->process_count) return;
 
+    int idx = app->selected_process;
+
+    for (int i = idx; i < app->CFG->process_count - 1; i++) {
+        app->CFG->processes[i] = app->CFG->processes[i + 1];
+    }
+    app->CFG->process_count--;
+
+    if (app->CFG->process_count == 0) {
+        app->selected_process = -1;
+        gtk_editable_set_text(GTK_EDITABLE(app->id_entry), "");
+        gtk_editable_set_text(GTK_EDITABLE(app->arrival_entry), "");
+        gtk_editable_set_text(GTK_EDITABLE(app->exec_entry), "");
+        gtk_editable_set_text(GTK_EDITABLE(app->priority_entry), "");
+        gtk_editable_set_text(GTK_EDITABLE(app->io_entry), "");
+    } else {
+        if (app->selected_process >= app->CFG->process_count)
+            app->selected_process = app->CFG->process_count - 1;
+    }
+
+    refresh_process_list(app);
+    if (app->editor_process_list_box && app->selected_process >= 0) {
+        GtkListBoxRow *row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(app->editor_process_list_box), app->selected_process);
+        if (row) gtk_list_box_select_row(GTK_LIST_BOX(app->editor_process_list_box), row);
+    }
+    if (app->config_filename && app->config_filename[0] != '\0') {
+        char full_path[512];
+        if (strstr(app->config_filename, "/") == NULL) {
+            snprintf(full_path, sizeof(full_path), "%s/%s", CONFIG_DIR, app->config_filename);
+        } else {
+            snprintf(full_path, sizeof(full_path), "%s", app->config_filename);
+        }
+
+        if (save_config(full_path, app->CFG)) {
+            g_print("Config saved to %s\n", full_path);
+            handle_config_submission(app, app->config_filename);
+        } else {
+            g_print("Failed to save config to %s\n", full_path);
+        }
+    }
+}
 
 void activate(GtkApplication *gtk_app, gpointer user_data) {
     AppContext *app = (AppContext *)user_data;
@@ -760,8 +780,7 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_window_set_default_size(GTK_WINDOW(app->window), 1200, 850);
     app->selected_process = -1;
     GtkWidget *main_container = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-
-    // Header
+    
     GtkWidget *header_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     gtk_widget_set_margin_top(header_box, 30);
     gtk_widget_set_margin_bottom(header_box, 30);
@@ -773,21 +792,19 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_box_append(GTK_BOX(header_box), title);
     gtk_box_append(GTK_BOX(main_container), header_box);
 
-    // Horizontal container for two sections
     GtkWidget *horizontal_container = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 20);
     gtk_widget_set_margin_start(horizontal_container, 50);
     gtk_widget_set_margin_end(horizontal_container, 50);
     gtk_widget_set_margin_bottom(horizontal_container, 30);
     gtk_widget_set_hexpand(horizontal_container, TRUE);
-
-    // Left card (Configuration) - 1/4 width
+    
     GtkWidget *card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
     gtk_widget_set_hexpand(card, FALSE);
     gtk_widget_set_size_request(card, 250, -1);
 
     gtk_widget_add_css_class(card, "card");
 
-    // Algorithm Section
+    
     GtkWidget *algo_label = gtk_label_new("Select Scheduling Algorithm");
     gtk_widget_set_halign(algo_label, GTK_ALIGN_START);
     gtk_widget_add_css_class(algo_label, "section-label");
@@ -797,68 +814,60 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_widget_add_css_class(app->algo_dropdown, "dropdown");
     gtk_box_append(GTK_BOX(card), app->algo_dropdown);
 
-    // Quantum input section
+    app->quantum_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    GtkWidget *quantum_label = gtk_label_new("Time Quantum");
+    gtk_widget_set_halign(quantum_label, GTK_ALIGN_START);
+    gtk_widget_add_css_class(quantum_label, "quantum-label");
+    gtk_box_append(GTK_BOX(app->quantum_box), quantum_label);
+    app->quantum_entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(app->quantum_entry), "Enter quantum (default: 2)");
+    gtk_editable_set_text(GTK_EDITABLE(app->quantum_entry), "2");
+    gtk_widget_add_css_class(app->quantum_entry, "quantum-input");
+    gtk_box_append(GTK_BOX(app->quantum_box), app->quantum_entry);
+    gtk_widget_set_visible(app->quantum_box, FALSE);
 
-    // Create individual vertical boxes for each parameter (keep as before)
-app->quantum_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-GtkWidget *quantum_label = gtk_label_new("Time Quantum");
-gtk_widget_set_halign(quantum_label, GTK_ALIGN_START);
-gtk_widget_add_css_class(quantum_label, "quantum-label");
-gtk_box_append(GTK_BOX(app->quantum_box), quantum_label);
-app->quantum_entry = gtk_entry_new();
-gtk_entry_set_placeholder_text(GTK_ENTRY(app->quantum_entry), "Enter quantum (default: 2)");
-gtk_editable_set_text(GTK_EDITABLE(app->quantum_entry), "2");
-gtk_widget_add_css_class(app->quantum_entry, "quantum-input");
-gtk_box_append(GTK_BOX(app->quantum_box), app->quantum_entry);
-gtk_widget_set_visible(app->quantum_box, FALSE);
+    app->aging_interval_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    GtkWidget *aging_label = gtk_label_new("Aging Interval");
+    gtk_widget_set_halign(aging_label, GTK_ALIGN_START);
+    gtk_widget_add_css_class(aging_label, "quantum-label");
+    gtk_box_append(GTK_BOX(app->aging_interval_box), aging_label);
+    app->aging_interval_entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(app->aging_interval_entry), "Enter aging interval (default: 3)");
+    gtk_editable_set_text(GTK_EDITABLE(app->aging_interval_entry), "3");
+    gtk_widget_add_css_class(app->aging_interval_entry, "quantum-input");
+    gtk_box_append(GTK_BOX(app->aging_interval_box), app->aging_interval_entry);
+    gtk_widget_set_visible(app->aging_interval_box, FALSE);
 
-app->aging_interval_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-GtkWidget *aging_label = gtk_label_new("Aging Interval");
-gtk_widget_set_halign(aging_label, GTK_ALIGN_START);
-gtk_widget_add_css_class(aging_label, "quantum-label");
-gtk_box_append(GTK_BOX(app->aging_interval_box), aging_label);
-app->aging_interval_entry = gtk_entry_new();
-gtk_entry_set_placeholder_text(GTK_ENTRY(app->aging_interval_entry), "Enter aging interval (default: 3)");
-gtk_editable_set_text(GTK_EDITABLE(app->aging_interval_entry), "3");
-gtk_widget_add_css_class(app->aging_interval_entry, "quantum-input");
-gtk_box_append(GTK_BOX(app->aging_interval_box), app->aging_interval_entry);
-gtk_widget_set_visible(app->aging_interval_box, FALSE);
+    app->max_priority_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    GtkWidget *max_priority_label = gtk_label_new("Max Priority");
+    gtk_widget_set_halign(max_priority_label, GTK_ALIGN_START);
+    gtk_widget_add_css_class(max_priority_label, "quantum-label");
+    gtk_box_append(GTK_BOX(app->max_priority_box), max_priority_label);
+    app->max_priority_entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(app->max_priority_entry), "Enter max priority (default: 5)");
+    gtk_editable_set_text(GTK_EDITABLE(app->max_priority_entry), "5");
+    gtk_widget_add_css_class(app->max_priority_entry, "quantum-input");
+    gtk_box_append(GTK_BOX(app->max_priority_box), app->max_priority_entry);
+    gtk_widget_set_visible(app->max_priority_box, FALSE);
 
-app->max_priority_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-GtkWidget *max_priority_label = gtk_label_new("Max Priority");
-gtk_widget_set_halign(max_priority_label, GTK_ALIGN_START);
-gtk_widget_add_css_class(max_priority_label, "quantum-label");
-gtk_box_append(GTK_BOX(app->max_priority_box), max_priority_label);
-app->max_priority_entry = gtk_entry_new();
-gtk_entry_set_placeholder_text(GTK_ENTRY(app->max_priority_entry), "Enter max priority (default: 5)");
-gtk_editable_set_text(GTK_EDITABLE(app->max_priority_entry), "5");
-gtk_widget_add_css_class(app->max_priority_entry, "quantum-input");
-gtk_box_append(GTK_BOX(app->max_priority_box), app->max_priority_entry);
-gtk_widget_set_visible(app->max_priority_box, FALSE);
 
-// Create a horizontal row to hold all three parameter boxes
-GtkWidget *params_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10); // 10px spacing
-gtk_box_append(GTK_BOX(params_row), app->quantum_box);
-gtk_box_append(GTK_BOX(params_row), app->aging_interval_box);
-gtk_box_append(GTK_BOX(params_row), app->max_priority_box);
+    GtkWidget *params_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10); 
+    gtk_box_append(GTK_BOX(params_row), app->quantum_box);
+    gtk_box_append(GTK_BOX(params_row), app->aging_interval_box);
+    gtk_box_append(GTK_BOX(params_row), app->max_priority_box);
 
-// Append the horizontal row to the card instead of the individual boxes
-gtk_box_append(GTK_BOX(card), params_row);
-
+    gtk_box_append(GTK_BOX(card), params_row);
     
-    // Connect algorithm selection signal
     g_signal_connect(app->algo_dropdown, "notify::selected", G_CALLBACK(on_algorithm_selected), app);
 
     gtk_box_append(GTK_BOX(card), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
 
-    // Add Algorithm Button
     GtkWidget *btn_add_algo = gtk_button_new_with_label("Import Custom Algorithm");
     g_signal_connect(btn_add_algo, "clicked", G_CALLBACK(on_add_algorithm_clicked), app);
     gtk_box_append(GTK_BOX(card), btn_add_algo);
 
     gtk_box_append(GTK_BOX(card), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
-
-    // Configuration Section
+    
     GtkWidget *config_label = gtk_label_new("Configuration");
     gtk_widget_set_halign(config_label, GTK_ALIGN_START);
     gtk_widget_add_css_class(config_label, "section-label");
@@ -885,16 +894,13 @@ gtk_box_append(GTK_BOX(card), params_row);
 
     gtk_box_append(GTK_BOX(card), input_box);
 
-    //edit config
     app->edit_config_btn = gtk_button_new_with_label("Edit Config");
     gtk_widget_add_css_class(app->edit_config_btn, "edit-config-button");
     gtk_widget_set_sensitive(app->edit_config_btn, FALSE);
-    g_signal_connect(app->edit_config_btn, "clicked",
-                    G_CALLBACK(on_edit_config_clicked), app);
+    g_signal_connect(app->edit_config_btn, "clicked",  G_CALLBACK(on_edit_config_clicked), app);
 
     gtk_box_append(GTK_BOX(card), app->edit_config_btn);
 
-    // Process List
     GtkWidget *list_scroller = gtk_scrolled_window_new();
     gtk_widget_set_size_request(list_scroller, -1, 300);
     gtk_widget_add_css_class(list_scroller, "process-list-container");
@@ -903,15 +909,13 @@ gtk_box_append(GTK_BOX(card), params_row);
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(app->process_list_box), GTK_SELECTION_NONE);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(list_scroller), app->process_list_box);
     gtk_box_append(GTK_BOX(card), list_scroller);
-
-    // Start Button
+    
     GtkWidget *start_btn = gtk_button_new_with_label("Start Scheduler");
     gtk_widget_add_css_class(start_btn, "start-button");
     gtk_widget_set_halign(start_btn, GTK_ALIGN_FILL);
     g_signal_connect(start_btn, "clicked", G_CALLBACK(on_start_clicked), app);
     gtk_box_append(GTK_BOX(card), start_btn);
-
-    // Show Logfile Button
+    
     app->show_logfile_btn = gtk_button_new_with_label("Show Logfile");
     gtk_widget_add_css_class(app->show_logfile_btn, "show-logfile-button");
     gtk_widget_set_halign(app->show_logfile_btn, GTK_ALIGN_FILL);
@@ -919,10 +923,8 @@ gtk_box_append(GTK_BOX(card), params_row);
     g_signal_connect(app->show_logfile_btn, "clicked", G_CALLBACK(on_logfile_clicked), app);
     gtk_box_append(GTK_BOX(card), app->show_logfile_btn);
 
-    // Add left card to horizontal container
     gtk_box_append(GTK_BOX(horizontal_container), card);
 
-    // Right card (Gantt Chart) - 3/4 width
     GtkWidget *gantt_card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
     gtk_widget_set_hexpand(gantt_card, TRUE);
     gtk_widget_add_css_class(gantt_card, "card");
@@ -931,12 +933,9 @@ gtk_box_append(GTK_BOX(card), params_row);
     gtk_widget_set_halign(gantt_label, GTK_ALIGN_START);
     gtk_widget_add_css_class(gantt_label, "section-label");
     gtk_box_append(GTK_BOX(gantt_card), gantt_label);
-
-    // SCROLLABLE GANTT SECTION
+    
     GtkWidget *gantt_scroller = gtk_scrolled_window_new();
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(gantt_scroller),
-                                    GTK_POLICY_AUTOMATIC,  
-                                    GTK_POLICY_AUTOMATIC); 
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(gantt_scroller), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC); 
     gtk_widget_set_vexpand(gantt_scroller, TRUE);
     gtk_widget_add_css_class(gantt_scroller, "gantt-container");
 
@@ -944,17 +943,12 @@ gtk_box_append(GTK_BOX(card), params_row);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(gantt_scroller), app->gantt_widget);
     gtk_box_append(GTK_BOX(gantt_card), gantt_scroller);
 
-    // Add right card to horizontal container
     gtk_box_append(GTK_BOX(horizontal_container), gantt_card);
-
-
-
-    // Add horizontal container to main container
+    
     gtk_box_append(GTK_BOX(main_container), horizontal_container);
 
     gtk_window_set_child(GTK_WINDOW(app->window), main_container);
 
-    // CSS Styling - UPDATED gantt-container height for I/O support
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_string(provider,
         "window { background: linear-gradient(135deg, #000 0%, #764ba2 100%); }"
@@ -976,62 +970,9 @@ gtk_box_append(GTK_BOX(card), params_row);
 
     gtk_window_present(GTK_WINDOW(app->window));
 
-
     if (app->config_filename[0] != '\0'){
         handle_config_submission(app, app->config_filename);
     }else{
         app->config_filename[0] = '\0';
-    }
-}
-
-static void on_delete_process_clicked(GtkButton *button, gpointer user_data)
-{
-    AppContext *app = (AppContext *)user_data;
-    if (!app || !app->CFG) return;
-    if (app->selected_process < 0 || app->selected_process >= app->CFG->process_count) return;
-
-    int idx = app->selected_process;
-
-    /* Shift processes left to overwrite the deleted one */
-    for (int i = idx; i < app->CFG->process_count - 1; i++) {
-        app->CFG->processes[i] = app->CFG->processes[i + 1];
-    }
-    app->CFG->process_count--;
-
-    /* Adjust selection */
-    if (app->CFG->process_count == 0) {
-        app->selected_process = -1;
-        gtk_editable_set_text(GTK_EDITABLE(app->id_entry), "");
-        gtk_editable_set_text(GTK_EDITABLE(app->arrival_entry), "");
-        gtk_editable_set_text(GTK_EDITABLE(app->exec_entry), "");
-        gtk_editable_set_text(GTK_EDITABLE(app->priority_entry), "");
-        gtk_editable_set_text(GTK_EDITABLE(app->io_entry), "");
-    } else {
-        if (app->selected_process >= app->CFG->process_count)
-            app->selected_process = app->CFG->process_count - 1;
-    }
-
-    /* Update editor list */
-    refresh_process_list(app);
-    if (app->editor_process_list_box && app->selected_process >= 0) {
-        GtkListBoxRow *row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(app->editor_process_list_box), app->selected_process);
-        if (row) gtk_list_box_select_row(GTK_LIST_BOX(app->editor_process_list_box), row);
-    }
-
-    /* Persist and reload main UI if a config file is loaded */
-    if (app->config_filename && app->config_filename[0] != '\0') {
-        char full_path[512];
-        if (strstr(app->config_filename, "/") == NULL) {
-            snprintf(full_path, sizeof(full_path), "%s/%s", CONFIG_DIR, app->config_filename);
-        } else {
-            snprintf(full_path, sizeof(full_path), "%s", app->config_filename);
-        }
-
-        if (save_config(full_path, app->CFG)) {
-            g_print("Config saved to %s\n", full_path);
-            handle_config_submission(app, app->config_filename);
-        } else {
-            g_print("Failed to save config to %s\n", full_path);
-        }
     }
 }

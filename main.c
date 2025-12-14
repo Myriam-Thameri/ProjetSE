@@ -1,6 +1,6 @@
 /*
  * Simulateur d'Ordonnancement de Processus
- * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
+ * Copyright (c) 2025 Équipe ProjetSE - Université de Tunis El Manar
  *
  * Licensed under the MIT License
  * See LICENSE file in the project root for full license information.
@@ -18,18 +18,15 @@ int main(int argc, char **argv) {
     AppContext *app_data = g_new0(AppContext, 1);
     
     app_data->CFG = g_new0(Config, 1);
-    app_data->quantum = 2; // Initialize quantum with default value
+    app_data->quantum = 2; 
     
-    // Check if a config file argument was provided
     if (argc > 1) {
-        // Copy the filename to app_data
         strncpy(app_data->config_filename, argv[1], sizeof(app_data->config_filename) - 1);
         app_data->config_filename[sizeof(app_data->config_filename) - 1] = '\0';
 
         char config_file_path[256];
         snprintf(config_file_path, sizeof(config_file_path), "./Config/%s", app_data->config_filename);
         
-        // Optional: Verify that the file exists
         if (access(config_file_path, F_OK) != 0) {
             g_warning("Le fichier de configuration '%s' n'existe pas", config_file_path);
             app_data->config_filename[0] = '\0';
@@ -37,16 +34,12 @@ int main(int argc, char **argv) {
             g_print("Fichier de configuration chargé : %s\n", app_data->config_filename);
         }
     } else {
-        // No argument provided, initialize with empty string
         app_data->config_filename[0] = '\0';
     }
     
-    // Use HANDLES_COMMAND_LINE instead of DEFAULT_FLAGS to handle arguments manually
-    GtkApplication *app = gtk_application_new("com.example.OSScheduler", 
-                                               G_APPLICATION_NON_UNIQUE);
+    GtkApplication *app = gtk_application_new("com.example.OSScheduler",   G_APPLICATION_NON_UNIQUE);
     g_signal_connect(app, "activate", G_CALLBACK(activate), app_data);
     
-    // Pass only the first argument (program name) to avoid GtkApplication trying to handle files
     int status = g_application_run(G_APPLICATION(app), 1, argv);
     
     g_free(app_data->CFG);

@@ -1,3 +1,11 @@
+/*
+ * Simulateur d'Ordonnancement de Processus - Shortest Job First
+ * Adapted to use linked list QUEUE data structure
+ * Copyright (c) 2025 Équipe ProjetSE - Université de Tunis El Manar
+ *
+ * Licensed under the MIT License
+ * See LICENSE file in the project root for full license information.
+ */
 #include "../Config/types.h"
 #include "../Config/config.h"
 #include "../Utils/Algorithms.h"
@@ -5,12 +13,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-
-
-/* ============================================================================
-   SELECT SHORTEST JOB FIRST
-   ============================================================================ */
 
 PROCESS select_SJF(QUEUE queue) {
     QueueNode *node = queue.start;
@@ -25,11 +27,8 @@ PROCESS select_SJF(QUEUE queue) {
     return minP;
 }
 
-/* ============================================================================
-   SJF ALGORITHM — FINAL FIXED VERSION
-   ============================================================================ */
-
 void SJF_Algo(Config *config) {
+
     clear_gantt_slices();
     clear_io_slices();
 
@@ -37,7 +36,6 @@ void SJF_Algo(Config *config) {
     int time = 0;
     int finished = 0;
 
-    // For ASCII Gantt
     char line1[2000] = "";
     char line2[2000] = "";
     char line3[2000] = "";
@@ -56,9 +54,6 @@ void SJF_Algo(Config *config) {
         printf("\nTime = %d\n", time);
         log_print("\nTime = %d\n", time);
 
-        /* ---------------------------------------------------------------
-           1. PROCESS ARRIVALS
-           --------------------------------------------------------------- */
         for (int i = 0; i < config->process_count; i++) {
             PROCESS p = config->processes[i];
 
@@ -69,16 +64,12 @@ void SJF_Algo(Config *config) {
             }
         }
 
-        /* ---------------------------------------------------------------
-           2. IO MANAGEMENT - Process I/O BEFORE selecting/executing CPU
-           --------------------------------------------------------------- */
         if (io_queue.size > 0) {
             PROCESS io_p = io_queue.start->process;
 
             for (int i = 0; i < config->process_count; i++) {
                 if (strcmp(io_p.ID, pcb[i].process.ID) == 0 && pcb[i].in_io) {
 
-                    // Only decrement if io_remaining > 1, or if this is the last unit
                     if (pcb[i].io_remaining > 0) {
                         pcb[i].io_remaining--;
 
@@ -101,26 +92,19 @@ void SJF_Algo(Config *config) {
             }
         }
 
-        /* ---------------------------------------------------------------
-           3. CPU SELECTION (NON-PREEMPTIVE SJF)
-           --------------------------------------------------------------- */
         if (!cpu_busy && ready_queue.size > 0) {
             current = select_SJF(ready_queue);
             cpu_busy = 1;
+
             printf("At time %d: CPU selects %s (SJF)\n", time, current.ID);
             log_print("At time %d: CPU selects %s (SJF)\n", time, current.ID);
         }
 
         int cpu_executed = 0;
 
-        /* ---------------------------------------------------------------
-           4. CPU EXECUTION
-           --------------------------------------------------------------- */
         if (cpu_busy) {
             for (int i = 0; i < config->process_count; i++) {
-                if (strcmp(current.ID, pcb[i].process.ID) == 0 &&
-                    !pcb[i].finished &&
-                    !pcb[i].in_io) {
+                if (strcmp(current.ID, pcb[i].process.ID) == 0 && !pcb[i].finished && !pcb[i].in_io) {
 
                     pcb[i].remaining_time--;
                     pcb[i].executed_time++;
@@ -137,7 +121,6 @@ void SJF_Algo(Config *config) {
                     strcat(line3, "--");
                     strcat(line4, "   ");
 
-                    /* ---- PROCESS FINISHED ---- */
                     if (pcb[i].remaining_time <= 0) {
                         printf("At time %d: %s finishes\n", time, current.ID);
                         log_print("At time %d: %s finishes\n", time, current.ID);
@@ -150,23 +133,15 @@ void SJF_Algo(Config *config) {
                         break;
                     }
 
-                    /* ---- IO START ---- (Check AFTER finish check) */
-                    if (current.io_count > 0 &&
-                        pcb[i].io_index < current.io_count &&
-                        pcb[i].executed_time ==
-                            current.io_operations[pcb[i].io_index].start_time) {
+                    if (current.io_count > 0 &&  pcb[i].io_index < current.io_count && pcb[i].executed_time == current.io_operations[pcb[i].io_index].start_time) {
 
                         printf("At time %d: %s starts IO\n", time + 1, current.ID);
                         log_print("At time %d: %s starts IO\n", time + 1, current.ID);
                         
-                        // Add I/O slice starting at time + 1
-                        add_io_slice(current.ID, time + 1,
-                            current.io_operations[pcb[i].io_index].duration,
-                            NULL, "I/O");
+                        add_io_slice(current.ID, time + 1,  current.io_operations[pcb[i].io_index].duration,  NULL, "I/O");
 
                         pcb[i].in_io = 1;
-                        // Set io_remaining to duration + 1, because it will be decremented 
-                        // immediately in the next iteration
+
                         pcb[i].io_remaining = current.io_operations[pcb[i].io_index].duration + 1;
 
                         ready_queue = remove_specific_process(ready_queue, current.ID);
@@ -180,10 +155,7 @@ void SJF_Algo(Config *config) {
                 }
             }
         }
-
-        /* ---------------------------------------------------------------
-           5. CPU IDLE
-           --------------------------------------------------------------- */
+        
         if (!cpu_executed) {
             add_gantt_slice("IDLE", time, 1, "#cccccc");
 

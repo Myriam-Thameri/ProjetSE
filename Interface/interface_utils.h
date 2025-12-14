@@ -1,3 +1,10 @@
+/*
+ * Simulateur d'Ordonnancement de Processus
+ * Copyright (c) 2025 Équipe ProjetSE - Université de Tunis El Manar
+ *
+ * Licensed under the MIT License
+ * See LICENSE file in the project root for full license information.
+ */
 #ifndef INTERFACE_UTILS_H
 
 #define INTERFACE_UTILS_H
@@ -38,7 +45,6 @@ typedef struct {
     GtkWidget *exec_entry;
     GtkWidget *priority_entry;
     GtkWidget *io_entry;
-    // Editor widgets
     GtkWidget *entry_ID;
     GtkWidget *entry_arrival_time;
     GtkWidget *entry_execution_time;
@@ -62,10 +68,7 @@ void on_edit_config_clicked(GtkButton *button, gpointer user_data);
 static GtkWidget* create_process_list_editor(AppContext *app);
 static GtkWidget* create_editor_form(AppContext *app);
 static void load_process_into_editor(AppContext *app, int index);
-static void on_process_row_selected(GtkListBox *box,
-                                    GtkListBoxRow *row,
-                                    gpointer user_data);
-static void on_apply_process_changes(GtkButton *button,
-                                     gpointer user_data);
+static void on_process_row_selected(GtkListBox *box, GtkListBoxRow *row, gpointer user_data);
+static void on_apply_process_changes(GtkButton *button, gpointer user_data);
 static void on_delete_process_clicked(GtkButton *button, gpointer user_data);
 #endif // INTERFACE_UTILS_H

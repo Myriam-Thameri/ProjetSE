@@ -1,8 +1,11 @@
 /*
- * Simulateur d'Ordonnancement de Processus
- * Multilevel Scheduler with Dynamic Aging + I/O + Gantt Chart
+ * Simulateur d'Ordonnancement de Processus - Multilevel Aging
+ * Adapted to use linked list QUEUE data structure
+ * Copyright (c) 2025 Équipe ProjetSE - Université de Tunis El Manar
+ *
+ * Licensed under the MIT License
+ * See LICENSE file in the project root for full license information.
  */
-
 #include "../Config/types.h"
 #include "../Config/config.h"
 #include "../Utils/Algorithms.h"
@@ -13,9 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* =========================
-   AGING MECHANISM
-   ========================= */
 
 void apply_aging(PCB* pcbs, int total, int current_time, PCB* running,
                  int aging_interval, int max_priority)
@@ -48,14 +48,8 @@ void apply_aging(PCB* pcbs, int total, int current_time, PCB* running,
     }
 }
 
-/* =========================
-   MAIN SCHEDULER
-   ========================= */
 
-void MultilevelAgingScheduler(Config* config,
-                              int quantum,
-                              int aging_interval,
-                              int max_priority)
+void MultilevelAgingScheduler(Config* config, int quantum, int aging_interval, int max_priority)
 {
     clear_gantt_slices();
     clear_io_slices();
@@ -66,17 +60,12 @@ void MultilevelAgingScheduler(Config* config,
     int time = 0;
 
     printf("\n=== MULTILEVEL SCHEDULER WITH AGING + I/O ===\n");
-    printf("Quantum=%d | Aging Interval=%d | Max Priority=%d\n\n",
-           quantum, aging_interval, max_priority);
+    printf("Quantum=%d | Aging Interval=%d | Max Priority=%d\n\n", quantum, aging_interval, max_priority);
     log_print("\n=== MULTILEVEL SCHEDULER WITH AGING + I/O ===\n");
-    log_print("Quantum=%d | Aging Interval=%d | Max Priority=%d\n\n",
-           quantum, aging_interval, max_priority);
+    log_print("Quantum=%d | Aging Interval=%d | Max Priority=%d\n\n", quantum, aging_interval, max_priority);
 
     while (finished < total)
     {
-        /* =========================
-           UPDATE I/O
-           ========================= */
         for (int i = 0; i < total; i++) {
             PCB* p = &pcbs[i];
 
@@ -86,17 +75,12 @@ void MultilevelAgingScheduler(Config* config,
                 if (p->io_remaining <= 0) {
                     p->in_io = 0;
                     p->io_index++;
-                    printf("Time %d: %s finished I/O and returned to READY\n",
-                           time, p->process.ID);
-                    log_print("Time %d: %s finished I/O and returned to READY\n",
-                           time, p->process.ID);
+                    printf("Time %d: %s finished I/O and returned to READY\n", time, p->process.ID);
+                    log_print("Time %d: %s finished I/O and returned to READY\n", time, p->process.ID);
                 }
             }
         }
 
-        /* =========================
-           SELECT HIGHEST PRIORITY READY PROCESS
-           ========================= */
         PCB* next = NULL;
         for (int i = 0; i < total; i++) {
             PCB* p = &pcbs[i];
@@ -110,15 +94,8 @@ void MultilevelAgingScheduler(Config* config,
             }
         }
 
-        /* =========================
-           APPLY AGING
-           ========================= */
-        apply_aging(pcbs, total, time, next,
-                    aging_interval, max_priority);
+        apply_aging(pcbs, total, time, next, aging_interval, max_priority);
 
-        /* =========================
-           EXECUTION
-           ========================= */
         if (next) {
             int run_for = quantum;
             if (next->remaining_time < run_for)
@@ -132,7 +109,6 @@ void MultilevelAgingScheduler(Config* config,
                 next->executed_time++;
                 actual_run++;
 
-                // Check for I/O start
                 if (next->io_index < next->process.io_count) {
                     IO_OPERATION io = next->process.io_operations[next->io_index];
                     if (next->executed_time == io.start_time) {
@@ -141,9 +117,8 @@ void MultilevelAgingScheduler(Config* config,
 
                         add_io_slice(next->process.ID, time + t + 1, io.duration, NULL, "I/O");
 
-                        // We still increment actual_run for this last CPU unit
-                        t++; // optional: depends if you want to count this tick
-                        break; // Process goes to I/O, quantum is cut
+                        t++;
+                        break;
                     }
                 }
             }
@@ -152,16 +127,11 @@ void MultilevelAgingScheduler(Config* config,
             next->wait_time = 0;
             time += actual_run;
 
-            /* =========================
-               FINISH PROCESS
-               ========================= */
             if (next->remaining_time <= 0) {
                 next->finished = 1;
                 finished++;
-                printf("Time %d: %s has COMPLETED execution\n",
-                       time, next->process.ID);
-                log_print("Time %d: %s has COMPLETED execution\n",
-                       time, next->process.ID);
+                printf("Time %d: %s has COMPLETED execution\n", time, next->process.ID);
+                log_print("Time %d: %s has COMPLETED execution\n", time, next->process.ID);
             }
 
         } else {

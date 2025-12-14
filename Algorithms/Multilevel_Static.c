@@ -1,6 +1,7 @@
 /*
- * Simulateur d'Ordonnancement de Processus
- * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
+ * Simulateur d'Ordonnancement de Processus - Multilevel Static
+ * Adapted to use linked list QUEUE data structure
+ * Copyright (c) 2025 Équipe ProjetSE - Université de Tunis El Manar
  *
  * Licensed under the MIT License
  * See LICENSE file in the project root for full license information.
@@ -16,6 +17,7 @@
 
 
 void MultilevelStaticScheduler(Config* config, int quantum) {
+
     clear_gantt_slices();
     clear_io_slices();
     
@@ -28,7 +30,6 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
 
     while (finished_processes < total_processes) {
 
-        // Process I/O operations - decrement timers only, don't add slices here
         for (int i = 0; i < total_processes; i++) {
             if (pcbs[i].in_io && !pcbs[i].finished) {
                 pcbs[i].io_remaining--;
@@ -41,7 +42,6 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
             }
         }
 
-        // Select next process
         PCB* next = NULL;
         for (int i = 0; i < total_processes; i++) {
             if (!pcbs[i].finished &&
@@ -55,7 +55,7 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
         }
 
         if (next) {
-            // Execute for 1 time unit to keep CPU and I/O in sync
+
             printf("Time %d: |%-4s (Priority %d)\n",
                    time,
                    next->process.ID,
@@ -68,7 +68,7 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
             next->remaining_time--;
             next->executed_time++;
 
-            // Check for I/O after this execution
+
             if (next->io_index < next->process.io_count) {
                 IO_OPERATION *io_op = &next->process.io_operations[next->io_index];
                 if (next->executed_time >= io_op->start_time && next->remaining_time > 0) {
@@ -76,7 +76,7 @@ void MultilevelStaticScheduler(Config* config, int quantum) {
                     next->io_remaining = io_op->duration;
                     next->in_io = 1;
                     
-                    // ADD THE FULL I/O SLICE HERE (once, with full duration)
+        
                     add_io_slice(next->process.ID, time + 1, io_op->duration, NULL, "I/O");
                     
                     printf("  -> %s will start I/O at time %d for %d units\n", 
