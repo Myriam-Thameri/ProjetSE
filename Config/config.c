@@ -5,13 +5,12 @@
 #include "types.h"
 
 void trim(char* s) {
-    // remove spaces in the start
     char *start = s;
     while(*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r')
         start++;
-    memmove(s, start, strlen(start)+1);  // shift string left
+    memmove(s, start, strlen(start)+1); 
 
-    // remove spaces in the end
+
     char* end = s + strlen(s) - 1;
     while(end > s && (*end==' ' || *end=='\t' || *end=='\n' || *end=='\r'))
         *end-- = '\0';
@@ -22,37 +21,37 @@ int load_config(char* path , Config* cfg) {
     if ((file = fopen(path, "r")) == NULL) {
         perror("fopen()");
         return 0;
-    } //if the file cannot be opened the prgrm return NULL
+    } 
     
     
     char line[256];
     int process = -1;
     int p_io=-1;
-     // line by line till the end
+
     while(fgets(line, sizeof(line), file)) {
 
         trim(line);
         if (line[0] == '#' || strlen(line) ==0 ) {
             continue;
-        } // ignore comments(the comments begin with #) and empty lines
+        } 
         
         
         if (line[0] == '[') {
-            char section[20]; // process or process_io
-            sscanf(line, "[%[^]]]", section); //extract the name between []
+            char section[20]; 
+            sscanf(line, "[%[^]]]", section);
             
-            //in case it is a process
+            
             if (strncmp(section, "process",7)==0 && strchr(section, '_')==NULL){
                 sscanf( section, "process%d", &process);
                 p_io=-1;
             }
-            //in case it is a process io
+            
             else if (strncmp(section, "process_io",10)==0 && strchr(section, '_')!=NULL){
                 sscanf( section, "process%d_io%d", &process, &p_io);
                 p_io++;
                 
             }
-            continue; //continue to their attributes
+            continue;
         }
 
         char* eq = strchr(line, '=');
@@ -61,16 +60,16 @@ int load_config(char* path , Config* cfg) {
             char* key = line;
             char* value = eq + 1;
 
-            //eliminate the white spaces
+            
             trim(key);
             trim(value);
-            //config   att
-            if (strcmp(key, "process_count") == 0) { // key=process_count
+            
+            if (strcmp(key, "process_count") == 0) {
                 cfg ->process_count = atoi(value);
                 continue;
             }
 
-            //process att
+            
             if(p_io == -1){
                 if (strcmp(key , "ID")==0){
                     strcpy(cfg -> processes[process].ID , value);
@@ -89,7 +88,7 @@ int load_config(char* path , Config* cfg) {
                 }
             }
 
-            //io att
+
             else {
                 
             printf("Key: '%s', Value: '%s' p_io :'%d'\n", key, value,p_io);

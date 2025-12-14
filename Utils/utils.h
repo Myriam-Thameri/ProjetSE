@@ -10,4 +10,4 @@
 
 void scan_config_directory(AppContext *app);
 char **get_algorithms(int *count);
-#endif // UTILS_H
+#endif

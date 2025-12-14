@@ -19,7 +19,7 @@ void remove_extension(char *filename) {
 
 int init_log(const char *algo_name,  const char *config_file) {
     FILE *log_file = NULL;
-    // Create output directory if it doesn't exist
+
     #ifdef _WIN32
         mkdir("output");
     #else
@@ -30,17 +30,17 @@ int init_log(const char *algo_name,  const char *config_file) {
     strncpy(config_name, config_file, sizeof(config_name) - 1);
     config_name[sizeof(config_name) - 1] = '\0';
     remove_extension(config_name);
-    // Create log filename
+
     snprintf(current_log_path, sizeof(current_log_path), "output/%s_%s.log", algo_name, config_name);
     
-    // Open in append mode (do not overwrites existing file)
+
     log_file = fopen(current_log_path, "w");
     if (log_file == NULL) {
         fprintf(stderr, "Error: Could not create log file %s\n", current_log_path);
         return -1;
     }
     
-    // Write header
+
     time_t now = time(NULL);
     fprintf(log_file, "**********************************************************\n");
     fprintf(log_file, "Creation Time: %s", ctime(&now));
@@ -64,7 +64,7 @@ void close_log() {
     }
 }
 
-// Custom print function that writes to both console and log file
+
 int log_print(const char *format, ...) {
     va_list args;
 
@@ -76,7 +76,7 @@ int log_print(const char *format, ...) {
     
     va_start(args, format);
     vfprintf(log_file, format, args);
-    fflush(log_file);  // Ensure immediate write
+    fflush(log_file);
     va_end(args);
     return  0;
     

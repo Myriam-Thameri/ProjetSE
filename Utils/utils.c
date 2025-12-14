@@ -1,8 +1,8 @@
 #include <regex.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>     // for printf and perror
-#include <dirent.h>    // for listing files in a folder
+#include <stdio.h>     
+#include <dirent.h>    
 #include "utils.h"
 #include "../Interface/interface_utils.h"
 #include "../Config/config.h" 
@@ -37,7 +37,7 @@ char **get_algorithms(int *count) {
     DIR *dir = opendir("Algorithms/");
     if (!dir) return NULL;
 
-    char **list = malloc(sizeof(char*) * 50); // up to 50 algos
+    char **list = malloc(sizeof(char*) * 50); 
     *count = 0;
 
     struct dirent *entry;

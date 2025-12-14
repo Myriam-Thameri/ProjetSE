@@ -18,4 +18,4 @@ void close_log();
 
 int log_print(const char *format, ...);
 
-#endif // LOGFILE_H
+#endif

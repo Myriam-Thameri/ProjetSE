@@ -42,7 +42,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
     while(finished < config->process_count) {
         printf("\nTime = %d \n", time);
         
-        // get the just arrived processes
+
         for (int i = 0; i < config->process_count; i++) {
             PROCESS p = config->processes[i];
             
@@ -76,12 +76,12 @@ void RoundRobin_Algo(Config* config, int quantum) {
             }
         }
 
-        // process 
+
         int cpu_executed = 0;
         if (ready_queue.size > 0) {
             PROCESS p = ready_queue.start->process;
             
-            for (int i = 0; i < config->process_count; i++) {// search the process in PCB
+            for (int i = 0; i < config->process_count; i++) {
                 if (strcmp(pcb[i].process.ID, p.ID) == 0 && !pcb[i].finished && !pcb[i].in_io) {
                     
                     pcb[i].executed_time++;
@@ -103,7 +103,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
                         log_print("At time %d: Process %s starts IO\n", time, p.ID);
                         add_io_slice(p.ID, time + 1, p.io_operations[pcb[i].io_index].duration, NULL, "I/O");
                         pcb[i].in_io = 1;
-                        // Initialize io_remaining to duration+1 so zero-duration IOs are handled
+
                         pcb[i].io_remaining = p.io_operations[pcb[i].io_index].duration + 1;
                         ready_queue = remove_process_from_queue(ready_queue);
                         io_queue = add_process_to_queue(io_queue, p);
@@ -112,7 +112,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
                         strcat(line2, "|");
                         snprintf(line4 + strlen(line4), sizeof(line4) - strlen(line4),  "%d", time + 1);
                     }
-                    //  if finished
+
                     else if (pcb[i].remaining_time <= 0) {
                         printf("At time %d: Process %s finishes\n", time, p.ID);
                         log_print("At time %d: Process %s finishes\n", time, p.ID);
@@ -125,7 +125,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
                         strcat(line2, " | ");
                         snprintf(line4 + strlen(line4), sizeof(line4) - strlen(line4), "%d", time + 1);
                     }
-                    // quantum finished
+
                     else if (used_quantum >= quantum) {
                         printf("At time %d: Process %s quantum finish\n", time, p.ID);
                         log_print("At time %d: Process %s quantum finish\n", time, p.ID);
@@ -143,7 +143,7 @@ void RoundRobin_Algo(Config* config, int quantum) {
             }
         }
         
-        // CPU idle
+
         if (!cpu_executed) {
             add_gantt_slice("IDLE", time, 1, "#cccccc");
             strcat(line1, "--");

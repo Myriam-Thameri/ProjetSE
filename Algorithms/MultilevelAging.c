@@ -1,6 +1,7 @@
 /*
  * Simulateur d'Ordonnancement de Processus
  * Multilevel Scheduler with Dynamic Aging + I/O + Gantt Chart
+ * FIXED: I/O timing issue
  */
 
 #include "../Config/types.h"
@@ -13,9 +14,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* =========================
-   AGING MECHANISM
-   ========================= */
 
 void apply_aging(PCB* pcbs, int total, int current_time, PCB* running,
                  int aging_interval, int max_priority)
@@ -48,9 +46,7 @@ void apply_aging(PCB* pcbs, int total, int current_time, PCB* running,
     }
 }
 
-/* =========================
-   MAIN SCHEDULER
-   ========================= */
+
 
 void MultilevelAgingScheduler(Config* config,
                               int quantum,
@@ -74,9 +70,7 @@ void MultilevelAgingScheduler(Config* config,
 
     while (finished < total)
     {
-        /* =========================
-           UPDATE I/O
-           ========================= */
+
         for (int i = 0; i < total; i++) {
             PCB* p = &pcbs[i];
 
@@ -94,9 +88,7 @@ void MultilevelAgingScheduler(Config* config,
             }
         }
 
-        /* =========================
-           SELECT HIGHEST PRIORITY READY PROCESS
-           ========================= */
+
         PCB* next = NULL;
         for (int i = 0; i < total; i++) {
             PCB* p = &pcbs[i];
@@ -110,21 +102,19 @@ void MultilevelAgingScheduler(Config* config,
             }
         }
 
-        /* =========================
-           APPLY AGING
-           ========================= */
+
         apply_aging(pcbs, total, time, next,
                     aging_interval, max_priority);
 
-        /* =========================
-           EXECUTION
-           ========================= */
+
         if (next) {
             int run_for = quantum;
             if (next->remaining_time < run_for)
                 run_for = next->remaining_time;
 
             int actual_run = 0;
+            int io_triggered = 0;
+            
             for (int t = 0; t < run_for; t++) {
                 add_gantt_slice(next->process.ID, time + t, 1, NULL);
 
@@ -132,30 +122,34 @@ void MultilevelAgingScheduler(Config* config,
                 next->executed_time++;
                 actual_run++;
 
-                // Check for I/O start
+
                 if (next->io_index < next->process.io_count) {
                     IO_OPERATION io = next->process.io_operations[next->io_index];
                     if (next->executed_time == io.start_time) {
                         next->in_io = 1;
                         next->io_remaining = io.duration;
 
+                        printf("Time %d: %s starts I/O (duration=%d)\n",
+                               time + t + 1, next->process.ID, io.duration);
+                        log_print("Time %d: %s starts I/O (duration=%d)\n",
+                               time + t + 1, next->process.ID, io.duration);
+
                         add_io_slice(next->process.ID, time + t + 1, io.duration, NULL, "I/O");
 
-                        // We still increment actual_run for this last CPU unit
-                        t++; // optional: depends if you want to count this tick
-                        break; // Process goes to I/O, quantum is cut
+                        io_triggered = 1;
+                        break; 
                     }
                 }
             }
 
 
-            next->wait_time = 0;
+            if (!io_triggered) {
+                next->wait_time = 0;
+            }
+            
             time += actual_run;
 
-            /* =========================
-               FINISH PROCESS
-               ========================= */
-            if (next->remaining_time <= 0) {
+            if (next->remaining_time <= 0 && !next->in_io) {
                 next->finished = 1;
                 finished++;
                 printf("Time %d: %s has COMPLETED execution\n",
