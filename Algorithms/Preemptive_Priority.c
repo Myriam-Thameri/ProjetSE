@@ -65,27 +65,32 @@ static int needs_io_after_current_execution(PCB *p) {
     return 0;
 }
 
-/* Process IO queue - handle first process in IO */
+/* Process IO queue - handle all processes in IO */
 static void process_io_queue(QUEUE *ioq, QUEUE *readyq, PCB *pcb, int count, int time) {
     if (is_queue_empty(*ioq)) return;
 
-    // Get first process in IO queue
-    PCB *p = find_pcb_by_id(pcb, count, ioq->start->process.ID);
-    if (!p) return;
+    QueueNode *node = ioq->start;
     
-    // Add IO slice for the CURRENT time unit (when IO is actually happening)
-    
-    p->io_remaining--;
-
-    if (p->io_remaining <= 0) {
-        // Remove from IO queue and add to ready queue
-        *ioq = remove_process_from_queue(*ioq);
-        p->in_io = 0;
-        p->io_remaining = 0;
-        *readyq = add_process_to_queue(*readyq, p->process);
+    while (node != NULL) {
+        PCB *p = find_pcb_by_id(pcb, count, node->process.ID);
+        QueueNode *next_node = node->next;
         
-        printf("t=%d: %s completes IO and becomes READY\n", time, p->process.ID);
-        log_print("t=%d: %s completes IO and becomes READY\n", time, p->process.ID);
+        if (p && p->in_io) {
+            p->io_remaining--;
+            
+            if (p->io_remaining <= 0) {
+                // Remove from IO queue and add to ready queue
+                *ioq = remove_specific_process(*ioq, p->process.ID);
+                p->in_io = 0;
+                p->io_remaining = 0;
+                *readyq = add_process_to_queue(*readyq, p->process);
+                
+                printf("t=%d: %s completes IO and becomes READY\n", time, p->process.ID);
+                log_print("t=%d: %s completes IO and becomes READY\n", time, p->process.ID);
+            }
+        }
+        
+        node = next_node;
     }
 }
 
@@ -123,7 +128,6 @@ void run_priority_preemptive(Config *config) {
 
     PCB *running = NULL;
     int time = 0;
-    int io_device_busy = 0;
 
     printf("--- Simulation Start ---\n");
     log_print("--- Priority Preemptive Algorithm Started ***\n\n");
@@ -133,7 +137,6 @@ void run_priority_preemptive(Config *config) {
 
         /* STEP 1 — Process IO queue first */
         process_io_queue(&ioq, &readyq, pcbs, count, time);
-        io_device_busy = !is_queue_empty(ioq);
 
         /* STEP 2 — Schedule if CPU is free */
         if (!running) {
@@ -162,59 +165,42 @@ void run_priority_preemptive(Config *config) {
 
         /* STEP 4 — Execute or handle IO */
         if (running) {
-            if (needs_io_after_current_execution(running)) {
-                if (io_device_busy) {
-                    printf("%s would trigger IO but device BUSY - skips execution\n", running->process.ID);
-                    log_print("%s would trigger IO but device BUSY - skips execution\n", running->process.ID);
-                    readyq = add_process_to_queue(readyq, running->process);
-                    running = NULL;
-                    add_gantt_slice("IDLE", time, 1, "#cccccc");
-                } else {
-                    printf("%s executes (will enter IO after)\n", running->process.ID);
-                    log_print("%s executes (will enter IO after)\n", running->process.ID);
-                    add_gantt_slice(running->process.ID, time, 1, NULL);
-                    running->remaining_time--;
-                    running->executed_time++;
-                    
-                    if (running->remaining_time <= 0) {
-                        printf("t=%d: %s FINISHED\n", time + 1, running->process.ID);
-                        log_print("t=%d: %s FINISHED\n", time + 1, running->process.ID);
-                        running->finished = 1;
-                        running = NULL;
-                    } else {
-                        // Process will enter IO in the NEXT time unit
-                        IO_OPERATION *io_op = &running->process.io_operations[running->io_index];
-                        running->io_index++;
-                        running->io_remaining = io_op->duration;
-                        running->in_io = 1;
-                        ioq = add_process_to_queue(ioq, running->process);
-                        io_device_busy = 1;
-                        // IMPORTANT: IO starts at time+1, not overlapping with current execution
-                        // Don't add IO slice here - it will be added in next iteration when IO actually processes
-                        printf("t=%d: %s will enter IO for %d units starting at t=%d\n", 
-                               time + 1, running->process.ID, io_op->duration, time + 1);
-                        log_print("t=%d: %s will enter IO for %d units starting at t=%d\n", 
-                                  time + 1, running->process.ID, io_op->duration, time + 1);
-                        add_io_slice(running->process.ID, time + 1,io_op->duration, NULL, "I/O");
-                        running = NULL;
-                    }
-                }
-            } else {
-                printf("%s executes\n", running->process.ID);
-                log_print("%s executes\n", running->process.ID);
-                add_gantt_slice(running->process.ID, time, 1, NULL);
-                running->remaining_time--;
-                running->executed_time++;
+            printf("%s executes\n", running->process.ID);
+            log_print("%s executes\n", running->process.ID);
+            add_gantt_slice(running->process.ID, time, 1, NULL);
+            running->remaining_time--;
+            running->executed_time++;
+            
+            // Check if process finished
+            if (running->remaining_time <= 0) {
+                printf("t=%d: %s FINISHED\n", time + 1, running->process.ID);
+                log_print("t=%d: %s FINISHED\n", time + 1, running->process.ID);
+                running->finished = 1;
+                running = NULL;
+            } 
+            // Check for I/O after execution
+            else if (needs_io_after_current_execution(running)) {
+                IO_OPERATION *io_op = &running->process.io_operations[running->io_index];
+                running->io_index++;
                 
-                if (running->remaining_time <= 0) {
-                    printf("t=%d: %s FINISHED\n", time + 1, running->process.ID);
-                    log_print("t=%d: %s FINISHED\n", time + 1, running->process.ID);
-                    running->finished = 1;
-                    running = NULL;
-                }
+                // CRITICAL FIX: Set io_remaining to duration + 1
+                // Because it will be decremented at the start of NEXT iteration
+                running->io_remaining = io_op->duration + 1;
+                running->in_io = 1;
+                ioq = add_process_to_queue(ioq, running->process);
+                
+                // Add I/O slice starting at next time unit
+                add_io_slice(running->process.ID, time + 1, io_op->duration, NULL, "I/O");
+                
+                printf("t=%d: %s enters IO for %d units (will complete at t=%d)\n", 
+                       time + 1, running->process.ID, io_op->duration, time + 1 + io_op->duration);
+                log_print("t=%d: %s enters IO for %d units\n", 
+                          time + 1, running->process.ID, io_op->duration);
+                running = NULL;
             }
         } else {
-            if (io_device_busy) {
+            int io_busy = !is_queue_empty(ioq);
+            if (io_busy) {
                 printf("CPU idle (IO device busy)\n");
                 log_print("CPU idle (IO device busy)\n");
             } else if (!is_queue_empty(readyq)) {
