@@ -48,24 +48,24 @@ typedef struct {
 } AppContext;
 
 void activate(GtkApplication *gtk_app, gpointer user_data);
-static void on_start_clicked(GtkButton *button, gpointer user_data);
-static void on_add_algorithm_clicked(GtkButton *button, gpointer user_data);
-static void on_algorithm_file_added(GObject *source, GAsyncResult *result, gpointer user_data);
-static void on_algorithm_selected(GObject *dropdown, GParamSpec *pspec, gpointer user_data);
-static gboolean algorithm_requires_quantum(const char *algorithm);
-static void on_browse_clicked(GtkWidget *button, gpointer user_data);
-static void on_browse_row_activated(GtkListBox *box, GtkListBoxRow *row, gpointer user_data) ;
+void on_start_clicked(GtkButton *button, gpointer user_data);
+void on_add_algorithm_clicked(GtkButton *button, gpointer user_data);
+void on_algorithm_file_added(GObject *source, GAsyncResult *result, gpointer user_data);
+void on_algorithm_selected(GObject *dropdown, GParamSpec *pspec, gpointer user_data);
+gboolean algorithm_requires_quantum(const char *algorithm);
+void on_browse_clicked(GtkWidget *button, gpointer user_data);
+void on_browse_row_activated(GtkListBox *box, GtkListBoxRow *row, gpointer user_data) ;
 void handle_config_submission(AppContext *app, const char *filename);
 void update_process_list_ui(AppContext *app);
 void on_logfile_clicked(GtkWidget *button, gpointer user_data);
 void on_edit_config_clicked(GtkButton *button, gpointer user_data);
-static GtkWidget* create_process_list_editor(AppContext *app);
-static GtkWidget* create_editor_form(AppContext *app);
-static void load_process_into_editor(AppContext *app, int index);
-static void on_process_row_selected(GtkListBox *box,
+GtkWidget* create_process_list_editor(AppContext *app);
+GtkWidget* create_editor_form(AppContext *app);
+void load_process_into_editor(AppContext *app, int index);
+void on_process_row_selected(GtkListBox *box,
                                     GtkListBoxRow *row,
                                     gpointer user_data);
-static void on_apply_process_changes(GtkButton *button,
+void on_apply_process_changes(GtkButton *button,
                                      gpointer user_data);
-static void on_delete_process_clicked(GtkButton *button, gpointer user_data);
+void on_delete_process_clicked(GtkButton *button, gpointer user_data);
 #endif // INTERFACE_UTILS_H

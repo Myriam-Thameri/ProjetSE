@@ -103,12 +103,13 @@ void handle_config_submission(AppContext *app, const char *filename) {
 }
 
 static void on_submit_clicked(GtkWidget *button, gpointer user_data) {
+    (void)button;
     AppContext *app = (AppContext *)user_data;
     const char *text = gtk_editable_get_text(GTK_EDITABLE(app->config_entry));
     handle_config_submission(app, text);
 }
 
-static void on_browse_row_activated(GtkListBox *box, GtkListBoxRow *row, gpointer user_data) {
+void on_browse_row_activated(GtkListBox *box, GtkListBoxRow *row, gpointer user_data) {
     AppContext *app = (AppContext *)user_data;
 
     GtkWidget *label = gtk_list_box_row_get_child(row);
@@ -121,7 +122,8 @@ static void on_browse_row_activated(GtkListBox *box, GtkListBoxRow *row, gpointe
     gtk_window_close(GTK_WINDOW(toplevel));
 }
 
-static void on_browse_clicked(GtkWidget *button, gpointer user_data) {
+void on_browse_clicked(GtkWidget *button, gpointer user_data) {
+    (void)button;
     AppContext *app = (AppContext *)user_data;
 
     scan_config_directory(app);
@@ -166,7 +168,7 @@ static void on_browse_clicked(GtkWidget *button, gpointer user_data) {
 }
 
 
-static gboolean algorithm_requires_quantum(const char *algorithm) {
+gboolean algorithm_requires_quantum(const char *algorithm) {
         return (strcmp(algorithm, "Round_Robin") == 0 ||
             strcmp(algorithm, "Multilevel_Aging") == 0 ||
             strcmp(algorithm, "MultilevelAging") == 0 ||
@@ -180,7 +182,8 @@ static gboolean algorithm_requires_aging(const char *algorithm) {
 
 
 
-static void on_algorithm_selected(GObject *dropdown, GParamSpec *pspec, gpointer user_data) {
+void on_algorithm_selected(GObject *dropdown, GParamSpec *pspec, gpointer user_data) {
+    (void)pspec;
     AppContext *app = (AppContext *)user_data;
     GtkStringList *list = GTK_STRING_LIST(gtk_drop_down_get_model(GTK_DROP_DOWN(dropdown)));
     guint index = gtk_drop_down_get_selected(GTK_DROP_DOWN(dropdown));
@@ -207,7 +210,7 @@ static void on_algorithm_selected(GObject *dropdown, GParamSpec *pspec, gpointer
     }
 }
 
-static void on_algorithm_file_added(GObject *source, GAsyncResult *result, gpointer user_data) {
+void on_algorithm_file_added(GObject *source, GAsyncResult *result, gpointer user_data) {
     GtkFileDialog *dialog = GTK_FILE_DIALOG(source);
     GFile *file = gtk_file_dialog_open_finish(dialog, result, NULL);
     AppContext *app = (AppContext *)user_data;
@@ -239,6 +242,7 @@ static void on_algorithm_file_added(GObject *source, GAsyncResult *result, gpoin
 }
 
 void on_logfile_clicked(GtkWidget *button, gpointer user_data) {
+    (void)button;
     AppContext *app = (AppContext *)user_data;
     
     GtkWidget *dialog = gtk_window_new();
@@ -294,7 +298,8 @@ void on_logfile_clicked(GtkWidget *button, gpointer user_data) {
     gtk_window_present(GTK_WINDOW(dialog));
 }
 
-static void on_add_algorithm_clicked(GtkButton *button, gpointer user_data) {
+void on_add_algorithm_clicked(GtkButton *button, gpointer user_data) {
+    (void)button;
     AppContext *app = (AppContext *)user_data;
     GtkFileDialog *dialog = gtk_file_dialog_new();
     GtkFileFilter *filter = gtk_file_filter_new();
@@ -305,8 +310,8 @@ static void on_add_algorithm_clicked(GtkButton *button, gpointer user_data) {
     gtk_file_dialog_open(dialog, GTK_WINDOW(app->window), NULL, on_algorithm_file_added, app);
 }
 
-
-static void on_start_clicked(GtkButton *button, gpointer user_data) {
+void on_start_clicked(GtkButton *button, gpointer user_data) {
+    (void)button;
     AppContext *app = (AppContext *)user_data;
 
     if (app->CFG->process_count <= 0) {
@@ -332,7 +337,10 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
     char config_copy[256];
     strncpy(config_copy, app->config_filename, sizeof(config_copy) - 1);
     remove_extension(config_copy);
-    snprintf(app->log_filename, sizeof(app->log_filename), "output/%s_%s.log", algorithm, config_copy);
+    snprintf(app->log_filename, sizeof(app->log_filename),
+            "output/%.60s_%.60s.log",
+            algorithm, config_copy);
+
 
     init_log(algorithm, app->config_filename);
 
@@ -415,16 +423,15 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
     gtk_widget_set_sensitive(app->show_logfile_btn, TRUE);
 }
 static void on_add_process_clicked(GtkButton *button, gpointer user_data) {
+    (void)button;
     AppContext *app = (AppContext *)user_data;
 
     if (app->CFG->process_count >= 20) {
         // Maximum processes reached
-        GtkWidget *msg = gtk_message_dialog_new(GTK_WINDOW(app->window),
-                                                GTK_DIALOG_MODAL,
-                                                GTK_MESSAGE_WARNING,
-                                                GTK_BUTTONS_OK,
-                                                "Maximum 20 processes allowed.");
-        gtk_window_present(GTK_WINDOW(msg));
+        GtkAlertDialog *dialog =
+            gtk_alert_dialog_new("Maximum 20 processes allowed.");
+
+        gtk_alert_dialog_show(dialog, GTK_WINDOW(app->window));
         return;
     }
 
@@ -435,8 +442,7 @@ static void on_add_process_clicked(GtkButton *button, gpointer user_data) {
     new_process->execution_time = 0;
     new_process->priority = 0;
     new_process->io_count = 0;
-
-    int index = app->CFG->process_count;
+    
     app->CFG->process_count++;
 
     // Add a new row to the GTK list
@@ -449,12 +455,12 @@ static void on_add_process_clicked(GtkButton *button, gpointer user_data) {
     else
         gtk_list_box_append(GTK_LIST_BOX(app->process_list_box), row);
 
-    gtk_widget_show(row);
 }
 
 
 void on_edit_config_clicked(GtkButton *button, gpointer user_data)
 {
+    (void)button;
     AppContext *app = (AppContext *)user_data;
 
     GtkWidget *dialog = gtk_window_new();
@@ -563,9 +569,10 @@ static void refresh_process_list(AppContext *app)
 }
 
 
-static void on_apply_process_changes(GtkButton *button,
+void on_apply_process_changes(GtkButton *button,
                                      gpointer user_data)
 {
+    (void)button;   
     AppContext *app = (AppContext *)user_data;
 
     if (!app || !app->CFG) return;
@@ -615,7 +622,7 @@ static void on_apply_process_changes(GtkButton *button,
     }
 
     /* Persist changes to the config file if one is loaded, then reload */
-    if (app->config_filename && app->config_filename[0] != '\0') {
+    if (app->config_filename[0] != '\0'){
         char full_path[512];
         if (strstr(app->config_filename, "/") == NULL) {
             snprintf(full_path, sizeof(full_path), "%s/%s", CONFIG_DIR, app->config_filename);
@@ -634,7 +641,7 @@ static void on_apply_process_changes(GtkButton *button,
 }
 
 
-static void load_process_into_editor(AppContext *app, int index) {
+void load_process_into_editor(AppContext *app, int index) {
     if (!app || !app->CFG) return;
     if (index < 0 || index >= app->CFG->process_count) return;
 
@@ -656,9 +663,10 @@ static void load_process_into_editor(AppContext *app, int index) {
     gtk_editable_set_text(GTK_EDITABLE(app->io_entry), buf);
 }
 
-static void on_process_row_selected(GtkListBox *box,
+void on_process_row_selected(GtkListBox *box,
                                     GtkListBoxRow *row,
                                     gpointer user_data) {
+    (void)box;
     AppContext *app = (AppContext *)user_data;
     if (!row) return;
 
@@ -668,7 +676,7 @@ static void on_process_row_selected(GtkListBox *box,
     load_process_into_editor(app, index);
 }
 
-static GtkWidget* create_process_list_editor(AppContext *app) {
+GtkWidget* create_process_list_editor(AppContext *app) {
     GtkWidget *list_box = gtk_list_box_new();
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box),
                                    GTK_SELECTION_SINGLE);
@@ -702,7 +710,7 @@ static GtkWidget* create_process_list_editor(AppContext *app) {
     return list_box;
 }
 
-static GtkWidget* create_editor_form(AppContext *app) {
+GtkWidget* create_editor_form(AppContext *app) {
     GtkWidget *grid = gtk_grid_new();
     gtk_grid_set_row_spacing(GTK_GRID(grid), 10);
     gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
@@ -983,9 +991,9 @@ gtk_box_append(GTK_BOX(card), params_row);
         app->config_filename[0] = '\0';
     }
 }
-
-static void on_delete_process_clicked(GtkButton *button, gpointer user_data)
+void on_delete_process_clicked(GtkButton *button, gpointer user_data)
 {
+    (void)button;
     AppContext *app = (AppContext *)user_data;
     if (!app || !app->CFG) return;
     if (app->selected_process < 0 || app->selected_process >= app->CFG->process_count) return;
@@ -1019,7 +1027,7 @@ static void on_delete_process_clicked(GtkButton *button, gpointer user_data)
     }
 
     /* Persist and reload main UI if a config file is loaded */
-    if (app->config_filename && app->config_filename[0] != '\0') {
+    if (app->config_filename[0] != '\0') {
         char full_path[512];
         if (strstr(app->config_filename, "/") == NULL) {
             snprintf(full_path, sizeof(full_path), "%s/%s", CONFIG_DIR, app->config_filename);

@@ -126,9 +126,9 @@ static int get_gantt_required_width(void) {
 }
 
 // Drawing callback for the Gantt chart
-static void gantt_draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer data) {
+static void gantt_draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int height, void *user_data) {
     int required_width = get_gantt_required_width();
-    
+    (void)user_data;
     // Adjust height based on whether we have I/O data
     int required_height = (io_slice_count > 0) ? 280 : 150;
     gtk_widget_set_size_request(GTK_WIDGET(area), required_width, required_height);

@@ -2,6 +2,7 @@
 #include "../Config/config.h"
 #include "../Utils/Algorithms.h"
 #include "../Utils/log_file.h"
+#include "../Interface/gantt_chart.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

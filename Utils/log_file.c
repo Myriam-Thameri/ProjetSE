@@ -26,9 +26,12 @@ int init_log(const char *algo_name,  const char *config_file) {
         mkdir("output", 0755);
     #endif
     
-    remove_extension(config_file);
+    char config_name[256];
+    strncpy(config_name, config_file, sizeof(config_name) - 1);
+    config_name[sizeof(config_name) - 1] = '\0';
+    remove_extension(config_name);
     // Create log filename
-    snprintf(current_log_path, sizeof(current_log_path), "output/%s_%s.log", algo_name, config_file);
+    snprintf(current_log_path, sizeof(current_log_path), "output/%s_%s.log", algo_name, config_name);
     
     // Open in append mode (do not overwrites existing file)
     log_file = fopen(current_log_path, "w");
@@ -43,7 +46,7 @@ int init_log(const char *algo_name,  const char *config_file) {
     fprintf(log_file, "Creation Time: %s", ctime(&now));
     fprintf(log_file, "**********************************************************\n");
     fprintf(log_file, "Algorithm: %s\n", algo_name);
-    fprintf(log_file, "Config File Used: %s\n", strcat(config_file,".txt"));
+    fprintf(log_file, "Config File Used: %s\n", strcat(config_name,".txt"));
     fprintf(log_file, "**********************************************************\n\n");
     fflush(log_file);
     
