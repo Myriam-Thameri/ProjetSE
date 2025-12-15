@@ -1,7 +1,9 @@
 /*
  * Simulateur d'Ordonnancement de Processus
- * Multilevel Scheduler with Dynamic Aging + I/O + Gantt Chart
- * FIXED: I/O timing issue
+ * Copyright (c) 2025 Équipe ProjetSE - Université Virtuelle de Tunis
+ *
+ * Licensed under the MIT License
+ * See LICENSE file in the project root for full license information.
  */
 
 #include "../Config/types.h"
